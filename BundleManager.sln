@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32825.248
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BundleManager", "BundleManager.csproj", "{274ECD6B-6F7E-43E3-896B-628093C672F5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Developer - Debug|x64 = Developer - Debug|x64
+		Release - Alpha|x64 = Release - Alpha|x64
+		Release - Beta|x64 = Release - Beta|x64
+		Release - Final|x64 = Release - Final|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Developer - Debug|x64.ActiveCfg = Developer - Debug|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Developer - Debug|x64.Build.0 = Developer - Debug|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Alpha|x64.ActiveCfg = Release - Alpha|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Alpha|x64.Build.0 = Release - Alpha|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Beta|x64.ActiveCfg = Release - Beta|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Beta|x64.Build.0 = Release - Beta|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Final|x64.ActiveCfg = Release - Final|x64
+		{274ECD6B-6F7E-43E3-896B-628093C672F5}.Release - Final|x64.Build.0 = Release - Final|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C68F65D5-27BA-4D83-ABBA-9AB770B01A5C}
+	EndGlobalSection
+EndGlobal
