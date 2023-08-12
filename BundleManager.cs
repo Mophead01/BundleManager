@@ -785,7 +785,8 @@ namespace BundleManager
 
                 foreach (ChunkAssetEntry chkEntry in parData.Chunks)
                 {
-                    parEntry.LinkAsset(chkEntry);
+                    if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
+                        parEntry.LinkAsset(chkEntry);
                     CheckAddChkToBundle(chkEntry);
                 }
 
