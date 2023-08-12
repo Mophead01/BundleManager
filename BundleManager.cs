@@ -27,6 +27,7 @@ using System.Windows;
 using System.Windows.Markup;
 using DuplicationPlugin;
 using System.Windows.Documents;
+using static DuplicationPlugin.DuplicationTool;
 
 namespace BundleManager
 {
@@ -97,11 +98,15 @@ namespace BundleManager
         public void ClearBundleEdits() //Removes any existing bundle edits, reverts net reg and mvdb edits, and sets chunk firstmips to -1
         {
             App.WhitelistedBundles.Clear();
-            List<string> bundleBlueprints = AM.EnumerateBundles().Where(blueEntry => blueEntry != null && blueEntry.Added).Select(bEntry => bEntry.Name.ToLower().Replace("win32/", "")).ToList();
+            //Make sure any added bundles have the correct .Blueprint assigned.
+            foreach (BundleEntry newBunEntry in AM.EnumerateBundles().Where(blueEntry => blueEntry != null && blueEntry.Added && blueEntry.Type != BundleType.SharedBundle && blueEntry.Blueprint == null))
+                newBunEntry.Blueprint = AM.GetEbxEntry(newBunEntry.Name.Replace("win32/", ""));
+
+            List<EbxAssetEntry> bundleBlueprints = AM.EnumerateBundles().Select(bEntry => bEntry.Blueprint).Where(blueEntry => blueEntry != null && blueEntry.IsAdded).ToList();
             List<EbxAssetEntry> ebxEntries = AM.EnumerateEbx(modifiedOnly: true).ToList();
             foreach (EbxAssetEntry refEntry in ebxEntries)
             {
-                if (bundleBlueprints.Contains(refEntry.Name.ToLower().Replace("win32/", "")))
+                if (bundleBlueprints.Contains(refEntry))
                     continue;
                 if (refEntry.Type == null || refEntry.Type == "NetworkRegistryAsset" || refEntry.Type == "MeshVariationDatabase")
                     AM.RevertAsset(refEntry);
@@ -289,15 +294,13 @@ namespace BundleManager
             string dirName = Path.GetDirectoryName(App.FileSystem.CacheName) + @"/BundleManagerPrerequisites";
             if (!Directory.Exists(dirName) || !Config.Get<bool>("BMO_EnablePrerequisites", true))
                 return;
-            List<string> prereqFiles = Directory.EnumerateFiles(dirName).ToList();
+            List<string> prereqFiles = Directory.EnumerateFiles(dirName).Where(file => file.EndsWith(".bmpre")).ToList();
             if (prereqFiles.Count == 0)
                 return;
 
             App.Logger.Log($"Bundle Manager: Using Prerequisites files: {string.Join(", ", prereqFiles.ToList().Select(o => "\"" + Path.GetFileNameWithoutExtension(o) + "\""))}");
             foreach (string prereqFile in prereqFiles)
-            {
                 prerequisites.ReadFile(prereqFile);
-            }
         }
 
         #endregion
