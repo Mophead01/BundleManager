@@ -783,11 +783,18 @@ namespace BundleManager
                 foreach (ResAssetEntry resEntry in parData.Res)
                     CheckAddResToBundle(resEntry);
 
-                foreach (ChunkAssetEntry chkEntry in parData.Chunks)
+                foreach ((ChunkAssetEntry, int, string) chkData in parData.Chunks)
                 {
-                    if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
-                        parEntry.LinkAsset(chkEntry);
-                    CheckAddChkToBundle(chkEntry);
+                    if (!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData)
+                    {
+                        chkData.Item1.FirstMip = chkData.Item2;
+                        chkData.Item1.H32 = Utils.HashString(chkData.Item3 != null ? chkData.Item3 : parEntry.Name, true);
+                        //if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
+                        //    chkEntry.H32 = Utils.HashString(parEntry.Name, true);
+                    }
+                    //if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
+                    //    parEntry.LinkAsset(chkEntry);
+                    CheckAddChkToBundle(chkData.Item1);
                 }
 
 
@@ -825,8 +832,8 @@ namespace BundleManager
             {
                 LogString(refEntry.AssetType, "Adding to bundle", refEntry.Name, bunName);
                 refEntry.AddToBundle(bunID);
-                if (refEntry.FirstMip == -1 && BmCache.ChunkFirstMips.ContainsKey(refEntry))
-                    refEntry.FirstMip = BmCache.ChunkFirstMips[refEntry];
+                //if (refEntry.FirstMip == -1 && BmCache.ChunkFirstMips.ContainsKey(refEntry))
+                //    refEntry.FirstMip = BmCache.ChunkFirstMips[refEntry];
             }
             void GetLoggedData(EbxAssetEntry parEntry)
             {
@@ -840,7 +847,7 @@ namespace BundleManager
                             LoggedData[parEntry].meshVari = new MeshVariData() { BM_MeshVariationDatabaseEntry = BmCache.MeshVariationEntries[parEntry][0].BM_MeshVariationDatabaseEntry, refGuids = BmCache.MeshVariationEntries[parEntry][0].refGuids };
                     }
                     else
-                        LoggedData.Add(parEntry, new AssetData() { EbxReferences = parEntry.EnumerateDependencies().Select(o => App.AssetManager.GetEbxEntry(o)).ToList(), Chunks = new List<ChunkAssetEntry>(), Res = new List<ResAssetEntry>() });
+                        LoggedData.Add(parEntry, new AssetData() { EbxReferences = parEntry.EnumerateDependencies().Select(o => App.AssetManager.GetEbxEntry(o)).ToList(), Chunks = new List<(ChunkAssetEntry, int, string)>(), Res = new List<ResAssetEntry>() });
                 }
                 else
                 {
@@ -1055,21 +1062,21 @@ namespace BundleManager
                 LogString("Ebx", "Logging Special Data", parEntry.Name, parEntry.Type.ToString());
             AssetData parData = loggerExtensions[key].GetAssetData(parEntry, parAsset);
 
-            if (key != "null")
-            {
-                foreach (EbxAssetEntry refEntry in parData.EbxReferences)
-                    LogString("Ebx-Ebx", "Linking " + parEntry.Type, parEntry.Name, refEntry.Name);
-                foreach (ResAssetEntry resEntry in parData.Res)
-                {
-                    LogString("Ebx-Res", "Linking " + parEntry.Type, parEntry.Name, resEntry.Name);
-                    parEntry.LinkAsset(resEntry);
-                }
-                foreach (ChunkAssetEntry chkEntry in parData.Chunks)
-                {
-                    LogString("Ebx-Chunk", "Linking " + parEntry.Type, parEntry.Name, chkEntry.Name);
-                    parEntry.LinkAsset(chkEntry);
-                }
-            }
+            //if (key != "null")
+            //{
+            //    foreach (EbxAssetEntry refEntry in parData.EbxReferences)
+            //        LogString("Ebx-Ebx", "Linking " + parEntry.Type, parEntry.Name, refEntry.Name);
+            //    foreach (ResAssetEntry resEntry in parData.Res)
+            //    {
+            //        LogString("Ebx-Res", "Linking " + parEntry.Type, parEntry.Name, resEntry.Name);
+            //        parEntry.LinkAsset(resEntry);
+            //    }
+            //    foreach ((ChunkAssetEntry, int, string) chkData in parData.Chunks)
+            //    {
+            //        LogString("Ebx-Chunk", "Linking " + parEntry.Type, parEntry.Name, chkData.Item3. chkEntry.Name);
+            //        parEntry.LinkAsset(chkEntry);
+            //    }
+            //}
             parData.Objects = LogNetRegData(parEntry, parAsset);
             LoggedData.Add(parEntry, parData);
         }
@@ -1140,7 +1147,7 @@ namespace BundleManager
         {
             List<(string,int)> messages = new List<(string, int)> ()
             {
-                ($"", 100),
+                ($"", 1000),
                 ($"Have a nice day.", 5),
                 ($"Have a nice day {Environment.UserName} ;).", 1),
                 ($"Did anyone catch the game last night?", 15),

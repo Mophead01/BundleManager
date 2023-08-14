@@ -24,7 +24,7 @@ namespace BundleManager
     public static class BmCache
     {
         public static bool IsLoaded = false;
-        private static int BM_Version = 6;
+        private static int BM_Version = 7;
         private static AssetManager AM = App.AssetManager;
         private static Stopwatch stopWatch = new Stopwatch();
 
@@ -34,15 +34,15 @@ namespace BundleManager
         public static List<string> NetRegReferenceTypes = new List<string>();
         public static Dictionary<EbxAssetEntry, Dictionary<UInt32, MeshVariOriginalData>> MeshVariationEntries = new Dictionary<EbxAssetEntry, Dictionary<UInt32, MeshVariOriginalData>>();
         public static Dictionary<EbxAssetEntry, Dictionary<EbxAssetEntry, ResAssetEntry>> ObjectVariationPairs = new Dictionary<EbxAssetEntry, Dictionary<EbxAssetEntry, ResAssetEntry>>();
-        public static Dictionary<ChunkAssetEntry, int> ChunkFirstMips = new Dictionary<ChunkAssetEntry, int>();
+        //public static Dictionary<ChunkAssetEntry, int> ChunkFirstMips = new Dictionary<ChunkAssetEntry, int>();
 
         private static int stageIdx = 1;
         private static Dictionary<int, int> gameStageCounts = new Dictionary<int, int>()
         {
-            {(int)ProfileVersion.StarWarsBattlefrontII, 8 },
-            {(int)ProfileVersion.StarWarsBattlefront, 5},
-            {(int)ProfileVersion.Battlefield5, 5},
-            {(int)ProfileVersion.Battlefield1, 5 },
+            {(int)ProfileVersion.StarWarsBattlefrontII, 7 },
+            {(int)ProfileVersion.StarWarsBattlefront, 4},
+            {(int)ProfileVersion.Battlefield5, 4},
+            {(int)ProfileVersion.Battlefield1, 4},
         };
 
         public static bool LoadCache(FrostyTaskWindow task)
@@ -91,7 +91,7 @@ namespace BundleManager
             FindAllNetRegObjectReferences(task);
             CreateCacheMeshVariationDatabase(task);
             LogAssetData(task);
-            CreateCacheEnumerateTextureFirstMips(task);
+            //CreateCacheEnumerateTextureFirstMips(task);
             ExportingCache(App.FileSystem.CacheName);
             stopWatch.Stop();
             App.Logger.Log(string.Format("Bundle Manager Cache generated in {0} seconds", stopWatch.Elapsed));
@@ -615,29 +615,29 @@ namespace BundleManager
 
         #region Firstmip
 
-        private static void CreateCacheEnumerateTextureFirstMips(FrostyTaskWindow task)
-        {
-            LogUpdate(task, "Caching Texture Firstmips");
-            uint forCount = AM.GetEbxCount("TextureAsset");
-            uint forIdx = 0;
-            Parallel.ForEach(AM.EnumerateEbx(type: "TextureAsset"), parEntry =>
-            {
-                if (parEntry.IsAdded)
-                    return;
+        //private static void CreateCacheEnumerateTextureFirstMips(FrostyTaskWindow task)
+        //{
+        //    LogUpdate(task, "Caching Texture Firstmips");
+        //    uint forCount = AM.GetEbxCount("TextureAsset");
+        //    uint forIdx = 0;
+        //    Parallel.ForEach(AM.EnumerateEbx(type: "TextureAsset"), parEntry =>
+        //    {
+        //        if (parEntry.IsAdded)
+        //            return;
 
-                EbxAsset parAsset = AM.GetEbx(parEntry, true);
-                dynamic parRoot = parAsset.RootObject;
+        //        EbxAsset parAsset = AM.GetEbx(parEntry, true);
+        //        dynamic parRoot = parAsset.RootObject;
 
-                ResAssetEntry resEntry = App.AssetManager.GetResEntry(parRoot.Resource);
-                Texture texture = App.AssetManager.GetResAs<Texture>(resEntry);
-                ChunkAssetEntry chunkEntry = App.AssetManager.GetChunkEntry(texture.ChunkId);
-                lock (forLock)
-                {
-                    ChunkFirstMips.Add(chunkEntry, texture.FirstMip);
-                    task.Update(progress: (forIdx++ / (double)forCount) * 100.0d);
-                }
-            });
-        }
+        //        ResAssetEntry resEntry = App.AssetManager.GetResEntry(parRoot.Resource);
+        //        Texture texture = App.AssetManager.GetResAs<Texture>(resEntry);
+        //        ChunkAssetEntry chunkEntry = App.AssetManager.GetChunkEntry(texture.ChunkId);
+        //        lock (forLock)
+        //        {
+        //            ChunkFirstMips.Add(chunkEntry, texture.FirstMip);
+        //            task.Update(progress: (forIdx++ / (double)forCount) * 100.0d);
+        //        }
+        //    });
+        //}
 
         #endregion
 
@@ -837,8 +837,8 @@ namespace BundleManager
                     //chunk
                     if (UnmodifiedAssetData[parEntry].Chunks.Count > 0)
                         writer.WriteLine(String.Format("{0}Chunk References ({1}):", new string('\t', 2), UnmodifiedAssetData[parEntry].Chunks.Count));
-                    foreach (ChunkAssetEntry chunkEntry in UnmodifiedAssetData[parEntry].Chunks)
-                        writer.WriteLine(String.Format("{0}{1}", new string('\t', 3), chunkEntry.Name));
+                    foreach ((ChunkAssetEntry, int, string) chunkData in UnmodifiedAssetData[parEntry].Chunks)
+                        writer.WriteLine(String.Format("{0}{1}\tFirstmip:{2}\tH32:{3}", new string('\t', 3), chunkData.Item1.Name, chunkData.Item2, chunkData.Item3 != null ? chunkData.Item3.ToLower() : "(Ebx Name)"));
 
                     //Network Registry Objects
                     if (UnmodifiedAssetData[parEntry].Objects != null)
@@ -854,9 +854,9 @@ namespace BundleManager
                 foreach(ResAssetEntry resEntry in notLoggedRes)
                     writer.WriteLine(String.Format("{0}{1}", new string('\t', 1), resEntry.Name));
 
-                writer.WriteLine("Texture Chunk Firstmips:");
-                foreach (ChunkAssetEntry chkEntry in ChunkFirstMips.Keys)
-                    writer.WriteLine(String.Format("{0}{1} - {2}", new string('\t', 1), chkEntry.Name, ChunkFirstMips[chkEntry]));
+                //writer.WriteLine("Texture Chunk Firstmips:");
+                //foreach (ChunkAssetEntry chkEntry in ChunkFirstMips.Keys)
+                //    writer.WriteLine(String.Format("{0}{1} - {2}", new string('\t', 1), chkEntry.Name, ChunkFirstMips[chkEntry]));
             }
 
             using (NativeWriter writer = new NativeWriter(new FileStream($"{name}_bundlemanager.cache", FileMode.Create)))
@@ -868,7 +868,7 @@ namespace BundleManager
                 writer.Write(MeshVariationEntries.Count);
                 writer.Write(UnmodifiedAssetData.Count);
                 writer.Write(ObjectVariationPairs.Count);
-                writer.Write(ChunkFirstMips.Count);
+                //writer.Write(ChunkFirstMips.Count);
 
 
                 foreach (int BunID in BundleParents.Keys)
@@ -936,8 +936,14 @@ namespace BundleManager
                     foreach (ResAssetEntry refEntry in parData.Res)
                         writer.Write(refEntry.ResRid);
                     writer.Write(parData.Chunks.Count);
-                    foreach (ChunkAssetEntry refEntry in parData.Chunks)
-                        writer.Write(refEntry.Id);
+                    foreach ((ChunkAssetEntry, int, string) chunkData in parData.Chunks)
+                    {
+                        writer.Write(chunkData.Item1.Id);
+                        writer.Write(chunkData.Item2);
+                        writer.Write(chunkData.Item3 != null);
+                        if (chunkData.Item3 != null)
+                            writer.WriteNullTerminatedString(chunkData.Item3);
+                    }
                     if (parData.Objects != null)
                     {
                         writer.Write(parData.Objects.Count);
@@ -959,18 +965,18 @@ namespace BundleManager
                     }
                 }
 
-                foreach (ChunkAssetEntry chkEntry in ChunkFirstMips.Keys)
-                {
-                    writer.Write(new Guid(chkEntry.Name));
-                    writer.Write(ChunkFirstMips[chkEntry]);
-                }
+                //foreach (ChunkAssetEntry chkEntry in ChunkFirstMips.Keys)
+                //{
+                //    writer.Write(new Guid(chkEntry.Name));
+                //    writer.Write(ChunkFirstMips[chkEntry]);
+                //}
 
                 BundleParents.Clear();
                 NetRegReferenceTypes.Clear();
                 MeshVariationEntries.Clear();
                 UnmodifiedAssetData.Clear();
                 ObjectVariationPairs.Clear();
-                ChunkFirstMips.Clear();
+                //ChunkFirstMips.Clear();
 
             }
         }
@@ -991,7 +997,7 @@ namespace BundleManager
                 int mvdbEntriesCount = reader.ReadInt();
                 int unmodAssetDataCount = reader.ReadInt();
                 int objectvariationCount = reader.ReadInt();
-                int chunkfirstmipCount = reader.ReadInt();
+                //int chunkfirstmipCount = reader.ReadInt();
 
                 for (int i = 0; i < bunParCount; i++)
                 {
@@ -1085,7 +1091,7 @@ namespace BundleManager
                 for (int i = 0; i < unmodAssetDataCount; i++)
                 {
                     EbxAssetEntry parEntry = AM.GetEbxEntry(reader.ReadGuid());
-                    AssetData parData = new AssetData { EbxReferences = new List<EbxAssetEntry>(), Chunks = new List<ChunkAssetEntry>(), Res = new List<ResAssetEntry>() };
+                    AssetData parData = new AssetData { EbxReferences = new List<EbxAssetEntry>(), Chunks = new List<(ChunkAssetEntry, int, string)>(), Res = new List<ResAssetEntry>() };
                     int count = reader.ReadInt();
                     for (int i2 = 0; i2 < count; i2++)
                         parData.EbxReferences.Add(AM.GetEbxEntry(reader.ReadGuid()));
@@ -1094,7 +1100,7 @@ namespace BundleManager
                         parData.Res.Add(AM.GetResEntry(reader.ReadULong()));
                     count = reader.ReadInt();
                     for (int i2 = 0; i2 < count; i2++)
-                        parData.Chunks.Add(AM.GetChunkEntry(reader.ReadGuid()));
+                        parData.Chunks.Add((AM.GetChunkEntry(reader.ReadGuid()), reader.ReadInt(), reader.ReadBoolean() ? reader.ReadNullTerminatedString() : null));
                     count = reader.ReadInt();
                     if (count != 0)
                     {
@@ -1119,12 +1125,12 @@ namespace BundleManager
                     ObjectVariationPairs.Add(varEntry, meshVars);
                 }
 
-                for (int i = 0; i < chunkfirstmipCount; i++)
-                {
-                    ChunkAssetEntry chkEntry = AM.GetChunkEntry(reader.ReadGuid());
-                    int firstMip = reader.ReadInt();
-                    ChunkFirstMips.Add(chkEntry, firstMip);
-                }
+                //for (int i = 0; i < chunkfirstmipCount; i++)
+                //{
+                //    ChunkAssetEntry chkEntry = AM.GetChunkEntry(reader.ReadGuid());
+                //    int firstMip = reader.ReadInt();
+                //    ChunkFirstMips.Add(chkEntry, firstMip);
+                //}
 
                 task.Update("", 00.0d);
             }

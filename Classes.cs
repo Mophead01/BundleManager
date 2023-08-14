@@ -25,7 +25,7 @@ namespace BundleManager
 
         public virtual AssetData GetAssetData(EbxAssetEntry parEntry, EbxAsset parAsset)
         {
-            AssetData data = new AssetData() { EbxReferences = new List<EbxAssetEntry>(), Chunks = new List<ChunkAssetEntry>(), Res = new List<ResAssetEntry>() };
+            AssetData data = new AssetData() { EbxReferences = new List<EbxAssetEntry>(), Chunks = new List<(ChunkAssetEntry, int, string)>(), Res = new List<ResAssetEntry>() };
 
             data.EbxReferences = parEntry.EnumerateDependencies().Select(o => App.AssetManager.GetEbxEntry(o)).ToList();
 
@@ -36,8 +36,8 @@ namespace BundleManager
             void AddChunk(Guid chkId)
             {
                 ChunkAssetEntry chkEntry = AM.GetChunkEntry(chkId);
-                if (chkEntry != null && !data.Chunks.Contains(chkEntry) && !chkEntry.IsTocChunk)
-                    data.Chunks.Add(chkEntry);
+                if (chkEntry != null && !data.Chunks.Select(chkData => chkData.Item1).Contains(chkEntry) && !chkEntry.IsTocChunk)
+                    data.Chunks.Add((chkEntry, chkEntry.FirstMip, null));
             }
             void AddRes(ulong resId)
             {
@@ -139,7 +139,7 @@ namespace BundleManager
                 Texture texture = App.AssetManager.GetResAs<Texture>(resEntry);
                 ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(texture.ChunkId);
                 if (chkEntry != null)
-                    data.Chunks.Add(chkEntry);
+                    data.Chunks.Add((chkEntry, texture.FirstMip, resEntry.Name));
             }
             return data;
         }
@@ -158,7 +158,7 @@ namespace BundleManager
                 AtlasTexture texture = App.AssetManager.GetResAs<AtlasTexture>(resEntry);
                 ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(texture.ChunkId);
                 if (chkEntry != null)
-                    data.Chunks.Add(chkEntry);
+                    data.Chunks.Add((chkEntry, chkEntry.FirstMip, resEntry.Name));
             }
             return data;
         }
@@ -230,7 +230,7 @@ namespace BundleManager
                     if (lod.ChunkId != Guid.Empty)
                     {
                         ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(lod.ChunkId);
-                        data.Chunks.Add(chkEntry);
+                        data.Chunks.Add((chkEntry, chkEntry.FirstMip, meshSet.Name));
                     }
                 }
             }
@@ -273,7 +273,7 @@ namespace BundleManager
     public class AssetData
     {
         public List<EbxAssetEntry> EbxReferences;
-        public List<ChunkAssetEntry> Chunks;
+        public List<(ChunkAssetEntry, int, string)> Chunks;
         public List<ResAssetEntry> Res;
         public List<EbxImportReference> Objects;
         public MeshVariData meshVari;
