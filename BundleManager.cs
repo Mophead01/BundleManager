@@ -604,6 +604,10 @@ namespace BundleManager
                     BundleCompleter(bunID);
                 }
             }
+
+            //Make sure all of the new bundles have some asset in them else Frosty will crash if the bundle is empty
+            foreach(BundleEntry bEntry in App.AssetManager.EnumerateBundles().Where(bEntry => bEntry.Added).ToList())
+                GetEmptyChunk().AddToBundle(App.AssetManager.GetBundleId(bEntry));
         }
 
         private void BundleCompleter(int bunID)
@@ -1113,6 +1117,18 @@ namespace BundleManager
                     }
                 }
             }
+        }
+
+        public ChunkAssetEntry GetEmptyChunk()
+        {
+            Guid dummyGuid = new Guid(new byte[] { 0x01, 0x02, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+            ChunkAssetEntry dummyChunk = App.AssetManager.GetChunkEntry(dummyGuid);
+            if (dummyChunk == null)
+            {
+                Guid newGuid = App.AssetManager.AddChunk(Encoding.ASCII.GetBytes("BundleManagerAssetDONOTDELETE"), dummyGuid);
+                dummyChunk = App.AssetManager.GetChunkEntry(dummyGuid);
+            }
+            return dummyChunk;
         }
 
         #endregion
