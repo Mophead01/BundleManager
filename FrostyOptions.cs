@@ -76,6 +76,11 @@ namespace BundleManager
             public bool BMO_CompleteAddedBundles { get; set; } = true;
 
             [Category("General Options")]
+            [DisplayName("Copy Linked Bundles")]
+            [Description("Disabling prevents the Bundle Manager from copying bundle edits from base game bundles to their duplicated counterparts.")]
+            public bool BMO_CopyLinkedBundles { get; set; } = true;
+
+            [Category("General Options")]
             [DisplayName("Ignore TOC/Manifest Chunks")]
             [Description("Enabling prevents the Bundle Manager from making bundle changes to preexisting chunks loaded in TOC or Manifest files")]
             public bool BMO_IgnoreTocChunks { get; set; } = false;
@@ -171,6 +176,7 @@ namespace BundleManager
                 BMO_CompleteSublevelBundles = Config.Get<bool>("BMO_CompleteSublevelBundles", true);
                 BMO_CompleteBlueprintBundles = Config.Get<bool>("BMO_CompleteBlueprintBundles", true);
                 BMO_CompleteAddedBundles = Config.Get<bool>("BMO_CompleteAddedBundles", true);
+                BMO_CopyLinkedBundles = Config.Get<bool>("BMO_CopyLinkedBundles", true);
                 BMO_WhitelistBundles = Config.Get<bool>("BMO_WhitelistBundles", true);
                 BMO_IgnoreTocChunks = Config.Get<bool>("BMO_IgnoreTocChunks", false);
                 BMO_Sublevel_SP = Config.Get<bool>("BMO_Sublevel_SP", false);
@@ -205,6 +211,7 @@ namespace BundleManager
                 Config.Add("BMO_CompleteSublevelBundles", BMO_CompleteSublevelBundles);
                 Config.Add("BMO_CompleteBlueprintBundles", BMO_CompleteBlueprintBundles);
                 Config.Add("BMO_CompleteAddedBundles", BMO_CompleteAddedBundles);
+                Config.Add("BMO_CopyLinkedBundles", BMO_CopyLinkedBundles);
                 Config.Add("BMO_WhitelistBundles", BMO_WhitelistBundles);
                 Config.Add("BMO_IgnoreTocChunks", BMO_IgnoreTocChunks);
                 Config.Add("BMO_Sublevel_SP", BMO_Sublevel_SP);

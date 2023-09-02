@@ -319,35 +319,57 @@ namespace BundleManager
 
                 if (!AllowedBundles.Contains(newBunId))
                     continue;
+
+
                 //Copies over bundle contents of sublevel if the bundles are linked
-                foreach(EbxAssetEntry linkedEntry in blueEntry.LinkedAssets)
+                if (Config.Get<bool>("BMO_CopyLinkedBundles", true))
                 {
-                    foreach(int oldBunId in linkedEntry.Bundles)
+                    foreach (EbxAssetEntry linkedEntry in blueEntry.LinkedAssets)
                     {
-                        if (AM.GetBundleEntry(oldBunId) != null && AM.GetBundleEntry(oldBunId).Blueprint == linkedEntry)
+                        foreach (int oldBunId in linkedEntry.Bundles)
                         {
-                            List<AssetEntry> assetsToAdd = new List<AssetEntry>(AM.EnumerateEbx().Where(o => o.IsInBundle(oldBunId)));
-                            assetsToAdd.AddRange(AM.EnumerateRes().Where(o => o.IsInBundle(oldBunId)));
-                            assetsToAdd.AddRange(AM.EnumerateChunks().Where(o => o.IsInBundle(oldBunId)));
-                            foreach (AssetEntry refEntry in assetsToAdd)
+                            if (AM.GetBundleEntry(oldBunId) != null && AM.GetBundleEntry(oldBunId).Blueprint == linkedEntry)
                             {
-                                if (refEntry != linkedEntry)
+                                List<AssetEntry> assetsToAdd = new List<AssetEntry>(AM.EnumerateEbx().Where(o => o.IsInBundle(oldBunId)));
+                                assetsToAdd.AddRange(AM.EnumerateRes().Where(o => o.IsInBundle(oldBunId)));
+                                foreach (AssetEntry refEntry in assetsToAdd)
                                 {
-                                    switch (refEntry.Type)
+                                    if (refEntry != linkedEntry)
                                     {
-                                        case "NetworkRegistryAsset":    EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
-                                            netEntry.AddedBundles.Clear();
-                                            netEntry.AddToBundle(newBunId);
-                                            break;
-                                        case "MeshVariationDatabase":   EbxAssetEntry mvEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.Replace("win32/", "") + "/MeshVariationDb_Win32", false, null);
-                                            mvEntry.AddedBundles.Clear();
-                                            mvEntry.AddToBundle(newBunId);
-                                            break;
-                                        default:
-                                            if (refEntry != linkedEntry)
-                                                refEntry.AddToBundle(newBunId);
-                                            break;
+                                        switch (refEntry.Type)
+                                        {
+                                            case "NetworkRegistryAsset":
+                                                EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
+                                                netEntry.AddedBundles.Clear();
+                                                netEntry.AddToBundle(newBunId);
+                                                LogString(netEntry.AssetType, "Duplicating original network registry", netEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                                break;
+                                            case "MeshVariationDatabase":
+                                                EbxAssetEntry mvEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.Replace("win32/", "") + "/MeshVariationDb_Win32", false, null);
+                                                mvEntry.AddedBundles.Clear();
+                                                mvEntry.AddToBundle(newBunId);
+                                                LogString(mvEntry.AssetType, "Duplicating original meshvariationdb", mvEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                                break;
+                                            default:
+                                                if (refEntry != linkedEntry)
+                                                {
+                                                    refEntry.AddToBundle(newBunId);
+                                                    LogString(refEntry.AssetType, "Copying from duplicated bundle", refEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                                }
+                                                break;
+                                        }
                                     }
+                                }
+                                foreach (ChunkAssetEntry chunkEntry in AM.EnumerateChunks().Where(o => o.IsInBundle(oldBunId)))
+                                {
+                                    if (BmH32Cache.IsLoaded)
+                                    {
+                                        chunkEntry.FirstMip = BmH32Cache.chunkCachedData[chunkEntry].Item1;
+                                        chunkEntry.H32 = BmH32Cache.chunkCachedData[chunkEntry].Item2;
+                                        LogString(chunkEntry.AssetType, "Setting H32&Firstmip (h32 cache)", BmH32Cache.chunkCachedData[chunkEntry].Item1.ToString(), BmH32Cache.chunkCachedData[chunkEntry].Item2.ToString());
+                                    }
+                                    chunkEntry.AddToBundle(newBunId);
+                                    LogString(chunkEntry.AssetType, "Copying from duplicated bundle", chunkEntry.Name, AM.GetBundleEntry(newBunId).Name);
                                 }
                             }
                         }
@@ -490,14 +512,14 @@ namespace BundleManager
 
 
             Dictionary<string, EbxAssetEntry> meshNamesToEntry = new Dictionary<string, EbxAssetEntry>();
-            foreach(EbxAssetEntry refEntry in App.AssetManager.EnumerateEbx())
+            foreach (EbxAssetEntry refEntry in App.AssetManager.EnumerateEbx())
             {
                 if (TypeLibrary.IsSubClassOf(refEntry.Type, "MeshAsset"))
                     meshNamesToEntry.Add($"{refEntry.Filename}_{(uint)Utils.HashString(refEntry.Name)}", refEntry);
             }
 
             //Find the mesh(es) which this variation is attached to
-            foreach(ResAssetEntry resEntry in App.AssetManager.EnumerateRes())
+            foreach (ResAssetEntry resEntry in App.AssetManager.EnumerateRes())
             {
                 if (resEntry.Name.ToLower().StartsWith(parEntry.Name.ToLower()))
                 {
@@ -515,7 +537,7 @@ namespace BundleManager
                     MeshSet meshSet = App.AssetManager.GetResAs<MeshSet>(App.AssetManager.GetResEntry(meshRoot.MeshSetResource));
 
                     Dictionary<string, dynamic> meshMaterialsNameToMaterial = new Dictionary<string, dynamic>();
-                    foreach(dynamic classObject in parAsset.Objects)
+                    foreach (dynamic classObject in parAsset.Objects)
                     {
                         if (classObject.GetType().Name == "MeshMaterialVariation")
                         {
@@ -600,13 +622,13 @@ namespace BundleManager
                 if (AllowedBundles.Contains(bunID))
                 {
                     if (BundleDataDict[bunID].ModifiedAssets.Count > 0)
-                        task.Update(status: String.Format("Completing: {0}", AM.GetBundleEntry(bunID).Name),progress: ((double)taskIdx++ / (double)taskCount) * 100.0d);
+                        task.Update(status: String.Format("Completing: {0}", AM.GetBundleEntry(bunID).Name), progress: ((double)taskIdx++ / (double)taskCount) * 100.0d);
                     BundleCompleter(bunID);
                 }
             }
 
             //Make sure all of the new bundles have some asset in them else Frosty will crash if the bundle is empty
-            foreach(BundleEntry bEntry in App.AssetManager.EnumerateBundles().Where(bEntry => bEntry.Added).ToList())
+            foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles().Where(bEntry => bEntry.Added).ToList())
                 GetEmptyChunk().AddToBundle(App.AssetManager.GetBundleId(bEntry));
         }
 
@@ -637,7 +659,7 @@ namespace BundleManager
                 {
                     if (ModifiedObjectVariations.ContainsKey(varEntry))
                     {
-                        foreach(KeyValuePair<EbxAssetEntry, MeshVariData> pair in ModifiedObjectVariations[varEntry])
+                        foreach (KeyValuePair<EbxAssetEntry, MeshVariData> pair in ModifiedObjectVariations[varEntry])
                         {
                             if (IsLoaded(pair.Key))
                             {
@@ -789,15 +811,22 @@ namespace BundleManager
 
                 foreach ((ChunkAssetEntry, int, string) chkData in parData.Chunks)
                 {
+                    App.Logger.Log((!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData).ToString());
                     if (!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData)
                     {
-                        chkData.Item1.FirstMip = chkData.Item2;
-                        chkData.Item1.H32 = Utils.HashString(chkData.Item3 != null ? chkData.Item3 : parEntry.Name, true);
-                        //if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
-                        //    chkEntry.H32 = Utils.HashString(parEntry.Name, true);
+                        if (BmH32Cache.IsLoaded)
+                        {
+                            chkData.Item1.FirstMip = BmH32Cache.chunkCachedData[chkData.Item1].Item1;
+                            chkData.Item1.H32 = BmH32Cache.chunkCachedData[chkData.Item1].Item2;
+                            LogString(chkData.Item1.AssetType, "Setting H32&Firstmip (h32 cache)", BmH32Cache.chunkCachedData[chkData.Item1].Item1.ToString(), BmH32Cache.chunkCachedData[chkData.Item1].Item2.ToString());
+                        }
+                        else
+                        {
+                            chkData.Item1.FirstMip = chkData.Item2;
+                            chkData.Item1.H32 = Utils.HashString(chkData.Item3 != null ? chkData.Item3 : parEntry.Name, true);
+                            LogString(chkData.Item1.AssetType, "Setting H32&Firstmip (cache)", chkData.Item2.ToString(), chkData.Item1.H32.ToString());
+                        }
                     }
-                    //if (TypeLibrary.IsSubClassOf(parEntry.Type, "TextureAsset"))
-                    //    parEntry.LinkAsset(chkEntry);
                     CheckAddChkToBundle(chkData.Item1);
                 }
 
@@ -1029,7 +1058,7 @@ namespace BundleManager
             if (Config.Get<bool>("BMO_WhitelistBundles", true))
             {
                 foreach (BundleEntry bunEntry in AM.EnumerateBundles())
-                    if(bunEntry.Added || AllowedBundles.Contains(AM.GetBundleId(bunEntry)))
+                    if (bunEntry.Added || AllowedBundles.Contains(AM.GetBundleId(bunEntry)))
                         App.WhitelistedBundles.Add(HashBundle(bunEntry));
 
                 //foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles())
@@ -1161,7 +1190,7 @@ namespace BundleManager
 
         private void CompletionMessage()
         {
-            List<(string,int)> messages = new List<(string, int)> ()
+            List<(string, int)> messages = new List<(string, int)>()
             {
                 ($"", 1000),
                 ($"Have a nice day.", 5),

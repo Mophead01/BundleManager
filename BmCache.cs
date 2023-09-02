@@ -47,6 +47,8 @@ namespace BundleManager
 
         public static bool LoadCache(FrostyTaskWindow task)
         {
+
+            BmH32Cache.LoadCache();
             if (IsLoaded)
                 return true;
             if (ProfilesLibrary.DataVersion == (int)ProfileVersion.StarWarsBattlefrontII && RootInstanceEbxEntryDb.IsLoaded != true && RootInstanceEbxEntryDb.ReadCache(task) == false)
@@ -1145,5 +1147,32 @@ namespace BundleManager
         }
 
 
+    }
+
+    public static class BmH32Cache
+    {
+        public static bool IsLoaded = false;
+
+        public static Dictionary<ChunkAssetEntry, (int, int)> chunkCachedData = new Dictionary<ChunkAssetEntry, (int, int)>();
+
+        public static bool LoadCache()
+        {
+            App.Logger.Log("Loading");
+            if (IsLoaded)
+                return false;
+            if (!File.Exists($"{App.FileSystem.CacheName}_bundlemanager_h32.cache"))
+                return false;
+            using (NativeReader reader = new NativeReader(new FileStream($"{App.FileSystem.CacheName}_bundlemanager_h32.cache", FileMode.Open, FileAccess.Read)))
+            {
+                int chunkCount = reader.ReadInt();
+                for (int i = 0; i < chunkCount; i++)
+                {
+                    chunkCachedData.Add(App.AssetManager.GetChunkEntry(reader.ReadGuid()), (reader.ReadInt(), reader.ReadInt()));
+                }
+            }
+            IsLoaded = true;
+            App.Logger.Log("Loaded");
+            return true;
+        }
     }
 }
