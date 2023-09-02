@@ -693,7 +693,7 @@ namespace BundleManager
                                         if (readEntry != null && readEntry != varEntry && (!BmCache.UnmodifiedAssetData.ContainsKey(varEntry) || !BmCache.UnmodifiedAssetData[varEntry].EbxReferences.Contains(readEntry)) && !IsLoaded(readEntry))
                                         {
                                             CheckAddEbxToBundle(readEntry);
-                                            App.Logger.Log(readEntry.Name);
+                                            //App.Logger.Log(readEntry.Name);
                                         }
                                     }
                                 }
@@ -811,7 +811,7 @@ namespace BundleManager
 
                 foreach ((ChunkAssetEntry, int, string) chkData in parData.Chunks)
                 {
-                    App.Logger.Log((!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData).ToString());
+                    //App.Logger.Log((!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData).ToString());
                     if (!chkData.Item1.IsAdded && !chkData.Item1.HasModifiedData)
                     {
                         if (BmH32Cache.IsLoaded)
