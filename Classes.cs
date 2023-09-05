@@ -230,7 +230,7 @@ namespace BundleManager
                     if (lod.ChunkId != Guid.Empty)
                     {
                         ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(lod.ChunkId);
-                        data.Chunks.Add((chkEntry, chkEntry.FirstMip, meshSet.Name));
+                        data.Chunks.Add((chkEntry, chkEntry.FirstMip, meshSet.FullName));
                     }
                 }
             }
