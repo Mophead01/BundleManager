@@ -59,8 +59,9 @@ namespace BundleManager
         private Dictionary<EbxAssetEntry, AssetData> LoggedData = new Dictionary<EbxAssetEntry, AssetData>();
 
         private BundleManagerPrerequisites prerequisites = new BundleManagerPrerequisites();
+        private bool BlockNetworkRegistries;
 
-        public BundleManager(FrostyTaskWindow Task) //Constructor which just loads the cache if it can
+        public BundleManager(FrostyTaskWindow Task, bool blockNetworkRegistries = false) //Constructor which just loads the cache if it can
         {
             task = Task;
             loggerExtensions.Add("null", new AssetLogger());
@@ -73,6 +74,7 @@ namespace BundleManager
                 }
             }
             BundleParents = BmCache.BundleParents.ToDictionary(o => o.Key, o => new BundleParentArrays(o.Value, new List<int>()));
+            BlockNetworkRegistries = blockNetworkRegistries;
         }
 
         public void CompleteBundleManage(List<int> levelBundles = null)
@@ -348,10 +350,13 @@ namespace BundleManager
                                         switch (refEntry.Type)
                                         {
                                             case "NetworkRegistryAsset":
-                                                EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
-                                                netEntry.AddedBundles.Clear();
-                                                netEntry.AddToBundle(newBunId);
-                                                LogString(netEntry.AssetType, "Duplicating original network registry", netEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                                if (!BlockNetworkRegistries)
+                                                {
+                                                    EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
+                                                    netEntry.AddedBundles.Clear();
+                                                    netEntry.AddToBundle(newBunId);
+                                                    LogString(netEntry.AssetType, "Duplicating original network registry", netEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                                }
                                                 break;
                                             case "MeshVariationDatabase":
                                                 EbxAssetEntry mvEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.Replace("win32/", "") + "/MeshVariationDb_Win32", false, null);
@@ -762,7 +767,7 @@ namespace BundleManager
             }
 
             //Network Registry
-            if (NewNetworkRegistryReferences.Count > 0 & Config.Get<bool>("BMO_CompleteNetworkRegistries", true) == true)
+            if (NewNetworkRegistryReferences.Count > 0 & Config.Get<bool>("BMO_CompleteNetworkRegistries", true) == true && !BlockNetworkRegistries)
             {
                 EbxAssetEntry netregEntry = AM.GetEbxEntry(AM.GetBundleEntry(bunID).Name.ToLower().Substring(6) + "_networkregistry_Win32");
 

@@ -26,7 +26,7 @@ namespace BundleManager
 
             public override string SubLevelMenuName => SubBMMenuName;
 
-            public override string MenuItemName => "Complete Bundles";
+            public override string MenuItemName => "Complete Bundles (Gameplay)";
 
             public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
 
@@ -42,6 +42,30 @@ namespace BundleManager
                 });
             });
         
+        }
+
+        public class BundleManagerCosmeticMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Complete Bundles (Cosmetic)";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Completing Bundles", "", (task) =>
+                {
+                    if (BmCache.LoadCache(task))
+                    {
+                        BundleManager BM = new BundleManager(task, true);
+                        BM.CompleteBundleManage();
+                    }
+                });
+            });
+
         }
 
         public class BundleManagerLevelsMenuExtension : MenuExtension
@@ -72,7 +96,6 @@ namespace BundleManager
                     }
                 });
             });
-
         }
 
         public class ClearBundlesMenuExtension : MenuExtension

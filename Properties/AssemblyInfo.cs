@@ -32,6 +32,7 @@ using System.Windows;
 [assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefrontII)]
 [assembly: RegisterOptionsExtension(typeof(BundleManagerOptionsMenu.BundleManagerOptions))]
 [assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerCosmeticMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerLevelsMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(MenuExtensions.ClearBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(MenuExtensions.ExportPrerequisitsMenuExtension))]
