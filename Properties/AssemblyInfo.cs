@@ -24,7 +24,7 @@ using System.Windows;
 
 [assembly: PluginDisplayName("Bundle Manager")]
 [assembly: PluginAuthor("Mophead")]
-[assembly: PluginVersion("5.0.0.0")]
+[assembly: PluginVersion("5.0.0.1")]
 
 //[assembly: PluginValidForProfile((int)ProfileVersion.Battlefield1)]
 //[assembly: PluginValidForProfile((int)ProfileVersion.Battlefield5)]
