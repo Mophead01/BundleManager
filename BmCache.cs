@@ -1157,7 +1157,7 @@ namespace BundleManager
 
         public static bool LoadCache()
         {
-            App.Logger.Log("Loading");
+            //App.Logger.Log("Loading");
             if (IsLoaded)
                 return false;
             if (!File.Exists($"{App.FileSystem.CacheName}_bundlemanager_h32.cache"))
@@ -1171,7 +1171,7 @@ namespace BundleManager
                 }
             }
             IsLoaded = true;
-            App.Logger.Log("Loaded");
+            //App.Logger.Log("Loaded");
             return true;
         }
     }

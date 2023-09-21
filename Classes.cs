@@ -18,6 +18,18 @@ using System.Threading.Tasks;
 namespace BundleManager
 {
     //Used to find ebx, chunk and res references of "special" assets such as meshassets
+
+    internal class BundleParentArrays
+    {
+        public List<int> baseParents = new List<int>();
+        public List<int> moddedParents = new List<int>();
+        public List<int> allParents { get { return baseParents.Concat(moddedParents).ToList(); } }
+        public BundleParentArrays(List<int> BaseParents, List<int> ModdedParents)
+        {
+            baseParents = BaseParents;
+            moddedParents = ModdedParents;
+        }
+    }
     internal class AssetLogger
     {
         public AssetManager AM = App.AssetManager;

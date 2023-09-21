@@ -113,9 +113,8 @@ namespace BundleManager
                 {
                     FrostyTaskWindow.Show("Exporting Prerequisites", "", (task) =>
                     {
-                        BundleManagerPrerequisites prerequistes = new BundleManagerPrerequisites();
-                        prerequistes.FindBundleEdits();
-                        prerequistes.WriteToFile(sfd.FileName);
+                        BundleManager BM = new BundleManager(task);
+                        BM.ExportPrerequistis(sfd.FileName);
                     });
                 };
             });

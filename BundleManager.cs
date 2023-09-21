@@ -45,6 +45,7 @@ namespace BundleManager
         private long lastTimestamp = 0;
 
         private List<int> BundleOrder = new List<int>(); //The order of bundles that the Bundle Manager completes in (very important to get right)
+        private Dictionary<int, BundleParentArrays> BundleParents = new Dictionary<int, BundleParentArrays>();
         private Dictionary<int, BM_BundleData> BundleDataDict = new Dictionary<int, BM_BundleData>();
 
         private Dictionary<EbxAssetEntry, List<EbxAssetEntry>> assetsToBM = new Dictionary<EbxAssetEntry, List<EbxAssetEntry>>();
@@ -71,6 +72,7 @@ namespace BundleManager
                     loggerExtensions.Add(extension.AssetType, extension);
                 }
             }
+            BundleParents = BmCache.BundleParents.ToDictionary(o => o.Key, o => new BundleParentArrays(o.Value, new List<int>()));
         }
 
         public void CompleteBundleManage(List<int> levelBundles = null)
@@ -79,7 +81,6 @@ namespace BundleManager
             ClearBundleEdits();
             if (EstablishBundleLoadOrder())
             {
-                LoadPrerequisites();
                 List<int> AllowedBundles = GetAllowedBundles(levelBundles);
                 FindNewDependencies(AllowedBundles);
                 BundleEnumeration(AllowedBundles);
@@ -90,6 +91,7 @@ namespace BundleManager
             CompletionMessage();
         }
 
+       
 
         #endregion
 
@@ -133,7 +135,17 @@ namespace BundleManager
             }
         }
 
-        private bool EstablishBundleLoadOrder() //Verifies integrity of cached bundle hierarchy and checks if modder has modified the bundle load order (e.g. adding new bpb parent references in swbf2 vurs)
+        private void AddModdedParent(int bunId, int moddedParentBunId)
+        {
+            if (BundleParents.ContainsKey(bunId))
+            {
+                if (!BundleParents[bunId].moddedParents.Contains(moddedParentBunId) && !BundleParents[bunId].baseParents.Contains(moddedParentBunId)) 
+                    BundleParents[bunId].moddedParents.Add(moddedParentBunId);
+            }
+            else
+                BundleParents.Add(bunId, new BundleParentArrays(new List<int>(), new List<int>() { moddedParentBunId }));
+        }
+        private bool EstablishBundleLoadOrder(bool loadPrerequisites = true) //Verifies integrity of cached bundle hierarchy and checks if modder has modified the bundle load order (e.g. adding new bpb parent references in swbf2 vurs)
         {
             bool LoopFound = false;
 
@@ -168,18 +180,15 @@ namespace BundleManager
                                 int bunId = AM.GetBundleId(bunName);
                                 if (bunId == -1)
                                     continue;
-                                if (BmCache.BundleParents.ContainsKey(bunId))
-                                {
-                                    if (!BmCache.BundleParents[bunId].Contains(refEntry.EnumerateBundles().ToList()[0]))
-                                        BmCache.BundleParents[bunId].Add(refEntry.EnumerateBundles().ToList()[0]);
-                                }
-                                else
-                                    BmCache.BundleParents.Add(bunId, new List<int> { (refEntry.EnumerateBundles().ToList()[0]) });
+                                AddModdedParent(bunId, refEntry.EnumerateBundles().ToList()[0]);
                             }
                         }
                     }
                 }
             }
+
+            if (loadPrerequisites)
+                LoadPrerequisites();
 
             foreach (BundleEntry bunEntry in AM.EnumerateBundles())
             {
@@ -203,15 +212,7 @@ namespace BundleManager
                 if (Par.Name != "")
                 {
                     if (CheckSwbf2VurBundleName(Par.Name, vurName) == true & CheckSwbf2VurBundleName(BlueprintBundleReference.Name, vurName) == true)
-                    {
-                        if (BmCache.BundleParents.ContainsKey(AM.GetBundleId("win32/" + BlueprintBundleReference.Name)))
-                        {
-                            if (!BmCache.BundleParents[AM.GetBundleId("win32/" + BlueprintBundleReference.Name)].Contains(AM.GetBundleId("win32/" + Par.Name)))
-                                BmCache.BundleParents[AM.GetBundleId("win32/" + BlueprintBundleReference.Name)].Add(AM.GetBundleId("win32/" + Par.Name));
-                        }
-                        else
-                            BmCache.BundleParents.Add(AM.GetBundleId("win32/" + BlueprintBundleReference.Name), new List<int> { (AM.GetBundleId("win32/" + Par.Name)) });
-                    }
+                        AddModdedParent(AM.GetBundleId("win32/" + BlueprintBundleReference.Name), AM.GetBundleId("win32/" + Par.Name));
                 }
             }
         }
@@ -228,7 +229,7 @@ namespace BundleManager
             if (!prevBunIDs.Contains(bunID))
             {
                 prevBunIDs.Add(bunID);
-                if (!BmCache.BundleParents.ContainsKey(bunID))
+                if (!BundleParents.ContainsKey(bunID))
                 {
                     BundleOrder.Add(bunID);
                     BundleDataDict.Add(bunID, new BM_BundleData { Parents = new List<int>(), ModifiedAssets = new List<EbxAssetEntry>() });
@@ -239,7 +240,7 @@ namespace BundleManager
                 else
                 {
                     List<int> ParentsList = new List<int>();
-                    foreach (int bunParID in BmCache.BundleParents[bunID])
+                    foreach (int bunParID in BundleParents[bunID].allParents)
                     {
                         if (bunID != bunParID)
                         {
@@ -300,7 +301,15 @@ namespace BundleManager
 
             App.Logger.Log($"Bundle Manager: Using Prerequisites files: {string.Join(", ", prereqFiles.ToList().Select(o => "\"" + Path.GetFileNameWithoutExtension(o) + "\""))}");
             foreach (string prereqFile in prereqFiles)
-                prerequisites.ReadFile(prereqFile);
+                prerequisites.ReadFile(prereqFile, ref BundleParents);
+        }
+
+        public void ExportPrerequistis(string FileName)
+        {
+            BundleManagerPrerequisites prerequistes = new BundleManagerPrerequisites();
+            prerequistes.FindBundleEdits();
+            EstablishBundleLoadOrder(false);
+            prerequistes.WriteToFile(FileName, ref BundleParents);
         }
 
         #endregion
@@ -643,6 +652,9 @@ namespace BundleManager
 
             EbxAssetEntry mvdbEntry = AM.GetEbxEntry(AM.GetBundleEntry(bunID).Name.ToLower().Substring(6) + "/MeshVariationDb_Win32");
 
+            bool prereqBundle = AM.GetBundleEntry(bunID).Added && AM.GetBundleEntry(bunID).Type == BundleType.SubLevel && AM.GetEbxEntry(AM.GetBundleEntry(bunID).Name) == null;
+            List<EbxAssetEntry> ignoreDependencies = !prereqBundle ? new List<EbxAssetEntry>() : prerequisites.assetsAddedToBundles.Where(bunList => bunList.Value.Contains(AM.GetBundleEntry(bunID))).Select(ebxEntry => ebxEntry.Key).ToList();
+
             //Adding dependencies to bundle
             if (BundleDataDict[bunID].ModifiedAssets.Count > 0)
             {
@@ -790,6 +802,9 @@ namespace BundleManager
                     if (refEntry.IsInBundle(parId))
                         return true;
                 }
+                if (ignoreDependencies.Contains(refEntry))
+                    return true;
+
                 return false;
             }
             void CheckAddEbxToBundle(EbxAssetEntry refEntry)
