@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BundleManagerPlugin": {
+      "commandName": "Executable",
+      "executablePath": "E:\\C#\\Frosty\\FrostyToolSuite\\FrostyEditor\\bin\\Developer\\Debug\\FrostyEditor.exe"
+    }
+  }
+}

@@ -14,6 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 
 namespace BundleManager
 {
@@ -105,7 +106,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_ClassSchematics : AssetLogger
+    internal class ClassSchematicsAssetLogger : AssetLogger
     {
         public override string AssetType => "SchematicsAsset";
 
@@ -122,7 +123,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_Vur : AssetLogger
+    internal class VisualUnlockRootAssetLogger : AssetLogger
     {
         public override string AssetType => "VisualUnlockRootAsset";
 
@@ -138,7 +139,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_TextureAsset : AssetLogger
+    internal class TexureAssetLogger : AssetLogger
     {
         public override string AssetType => "TextureAsset";
 
@@ -157,7 +158,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_AtlasTextureAsset : AssetLogger
+    internal class AtlasTextureAssetLogger : AssetLogger
     {
         public override string AssetType => "AtlasTextureAsset";
 
@@ -175,7 +176,7 @@ namespace BundleManager
             return data;
         }
     }
-    internal class AL_ShaderGraph : AssetLogger
+    internal class ShaderGraphAssetLogger : AssetLogger
     {
         public override string AssetType => "ShaderGraph";
 
@@ -205,7 +206,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_MeshAsset : AssetLogger
+    internal class MeshAssetLogger : AssetLogger
     {
         public override string AssetType => "MeshAsset";
 
@@ -251,7 +252,7 @@ namespace BundleManager
         }
     }
 
-    internal class AL_EmitterGraph : AssetLogger
+    internal class EmitterGraphAssetLogger : AssetLogger
     {
         public override string AssetType => "EmitterGraph";
 

@@ -114,6 +114,20 @@ namespace BundleManager
                     continue;
                 if (refEntry.Type == null || refEntry.Type == "NetworkRegistryAsset" || refEntry.Type == "MeshVariationDatabase")
                     AM.RevertAsset(refEntry);
+                else if (refEntry.Type == "LevelDescriptionAsset")
+                {
+                    refEntry.AddedBundles.Clear();
+                    Guid refGuid = AM.GetEbx(refEntry).RootInstanceGuid;
+                    EbxAssetEntry levEntry = AM.GetEbxEntry("LevelListReport");
+                    if (((dynamic)AM.GetEbx(levEntry).RootObject).BuiltLevels.Contains(refGuid))
+                    {
+                        foreach (int bunId in levEntry.EnumerateBundles())
+                            refEntry.AddToBundle(bunId);
+                    }
+                    else
+                        App.Logger.LogError($"ERROR: {refEntry.Name} root instance GUID not contained within LevelListReport");
+
+                }
                 else
                 {
                     refEntry.AddedBundles.Clear();
