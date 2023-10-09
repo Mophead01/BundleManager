@@ -413,7 +413,7 @@ namespace BundleManager
                         DependencyDetector(parEntry);
 
                     string type = "null";
-                    foreach (string uniqueTypes in new List<string> { "SoundWaveAsset", "MeshAsset", "ObjectVariation" })
+                    foreach (string uniqueTypes in new List<string> { "SoundWaveAsset", "MeshAsset", "ObjectVariation", "SpatialPrefabBlueprint" })
                     {
                         if (TypeLibrary.IsSubClassOf(parEntry.Type, uniqueTypes))
                             type = uniqueTypes;
@@ -423,6 +423,7 @@ namespace BundleManager
                         case "SoundWaveAsset": SoundWaveNewChunksDetector(parEntry); break;
                         case "MeshAsset": MeshAssetDatabaseDetector(parEntry); break;
                         case "ObjectVariation": ObjectVariationDatabaseDetector(parEntry); break;
+                        case "SpatialPrefabBlueprint": FullDependencyDetector(parEntry); break;
                     }
                 }
             }
@@ -461,6 +462,19 @@ namespace BundleManager
                         AddToBundleEnumeration(bunId);
                 }
             }
+        }
+
+        private void FullDependencyDetector(EbxAssetEntry parEntry)
+        {
+            if (parEntry.IsAdded)
+                return;
+            EbxAsset parAsset = AM.GetEbx(parEntry);
+            dynamic parRoot = parAsset.RootObject;
+            GetModifiedLoggedData(parEntry, parAsset);
+            if (assetsToBM.ContainsKey(parEntry))
+                assetsToBM[parEntry] = LoggedData[parEntry].EbxReferences;
+            else
+                assetsToBM.Add(parEntry, LoggedData[parEntry].EbxReferences);
         }
 
         private void SoundWaveNewChunksDetector(EbxAssetEntry parEntry) //Finds cases where modified sound wave assets have new chunks added to them

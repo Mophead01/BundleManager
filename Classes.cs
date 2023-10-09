@@ -101,6 +101,34 @@ namespace BundleManager
             {
                 //App.Logger.Log(obj.GetType().Name);
                 CheckProperties(obj);
+                if (obj.GetType().Name == "StaticModelGroupEntityData")
+                {
+                    //App.Logger.Log("Static group");
+                    Dictionary<uint, EbxAssetEntry> hashesToObjectVariations = AM.EnumerateEbx(type: "ObjectVariation").ToDictionary(refEntry => (uint)Utils.HashString(refEntry.Name, true), refEntry => refEntry);
+
+                    List<UInt32> objVarNameHashes = new List<UInt32>();
+                    foreach(dynamic memberData in obj.MemberDatas)
+                    {
+                        foreach(uint objVarNameHash in memberData.InstanceObjectVariation)
+                        {
+                            if (!objVarNameHashes.Contains(objVarNameHash) && objVarNameHash != 0)
+                                objVarNameHashes.Add(objVarNameHash);
+                        }
+                    }
+
+                    foreach(UInt32 objVarNameHash in objVarNameHashes)
+                    {
+                        if (hashesToObjectVariations.ContainsKey(objVarNameHash))
+                        {
+                            if (!data.EbxReferences.Contains(hashesToObjectVariations[objVarNameHash]))
+                                data.EbxReferences.Add(hashesToObjectVariations[objVarNameHash]);
+                        }
+                        else
+                        {
+                            App.Logger.LogWarning($"{parEntry.Name}: Unrecognised object variation hash {objVarNameHash}");
+                        }
+                    }
+                }
             }
             return data;
         }

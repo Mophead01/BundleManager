@@ -24,7 +24,7 @@ namespace BundleManager
     public static class BmCache
     {
         public static bool IsLoaded = false;
-        private static int BM_Version = 7;
+        private static int BM_Version = 8;
         private static AssetManager AM = App.AssetManager;
         private static Stopwatch stopWatch = new Stopwatch();
 
@@ -649,8 +649,8 @@ namespace BundleManager
         {
 
             LogUpdate(task, "Caching Asset Data");
-            int forCount = AM.EnumerateEbx().ToList().Count;
-            int forIdx = 0;
+            long forCount = AM.EnumerateEbx().Sum(refEntry => refEntry.OriginalSize);
+            long forIdx = 0;
 
             Dictionary<string, AssetLogger> loggerExtensions = new Dictionary<string, AssetLogger>();
             loggerExtensions.Add("null", new AssetLogger());
@@ -697,7 +697,8 @@ namespace BundleManager
                     if (key != "null" || parData.EbxReferences.Count > 0 || parData.Res.Count > 0 || parData.Chunks.Count > 0 || (parData.Objects != null && parData.Objects.Count > 0))
                         UnmodifiedAssetData.Add(parEntry, parData);
 
-                    task.Update(progress: (float)forIdx++ / forCount * 100);
+                    forIdx = forIdx + parEntry.OriginalSize;
+                    task.Update(progress: (float)forIdx / forCount * 100);
                 }
             });
 
