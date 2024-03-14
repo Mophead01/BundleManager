@@ -279,7 +279,7 @@ namespace BundleManager
                         if (AM.GetBundleEntry(bunID).Name == @"win32/S9_3/COOP_NT_FOSD/COOP_NT_FOSD" || AM.GetBundleEntry(bunID).Name == @"win32/S9_3/COOP_NT_MC85/COOP_NT_MC85")
                         {
                             foreach (int badBunId in new List<string> { "win32/gameplay/bundles/sharedbundles/common/animation/sharedbundleanimation_common",
-                                "win32/gameplay/bundles/sharedbundles/frontend+mp/abilities/sharedbundleabilities_frontend+mp",  }.Select(o => AM.GetBundleId(o)).ToList())
+                                "win32/gameplay/bundles/sharedbundles/frontend+mp/abilities/sharedbundleabilities_frontend+mp"}.Select(o => AM.GetBundleId(o)).ToList())
                             {
                                 if (ParentsList.Contains(badBunId))
                                     ParentsList.Remove(badBunId);
@@ -1142,6 +1142,8 @@ namespace BundleManager
             else
                 LogString("Ebx", "Logging Special Data", parEntry.Name, parEntry.Type.ToString());
             AssetData parData = loggerExtensions[key].GetAssetData(parEntry, parAsset);
+            if (parEntry.Name == "s2/levels/cloudcity_01/cloudcity_01_pathfindingblobs_8f4a3071-5cfc-4c65-ba51-3b28ca0a1fed")
+                parData.Chunks.Add((App.AssetManager.GetChunkEntry(new Guid("ceacc043-a7a9-12c9-a6c3-a29b9bb1c4e1")), -1, null));
 
             //if (key != "null")
             //{
@@ -1185,7 +1187,19 @@ namespace BundleManager
                 if (AllowedBundles.Contains(AM.GetBundleId(bEntry)) && bEntry.Blueprint != null && bEntry.Blueprint.Type == "LevelData" && bEntry.Name != "win32/Levels/Frontend/Frontend")
                 {
                     foreach (string animation in new List<string> { "animations/antanimations/levels/frontend/frontend_win32_antstate",
-                    "animations/antanimations/levels/frontend/collection_win32_antstate",})
+                        "animations/antanimations/levels/frontend/collection_win32_antstate"})
+                    {
+                        EbxAssetEntry ebxEntry = AM.GetEbxEntry(animation);
+                        ResAssetEntry resEntry = AM.GetResEntry(animation);
+                        ebxEntry.AddToBundle(AM.GetBundleId(bEntry));
+                        resEntry.AddToBundle(AM.GetBundleId(bEntry));
+                    }
+                }
+                if (AllowedBundles.Contains(AM.GetBundleId(bEntry)) && bEntry.Blueprint != null && bEntry.Blueprint.Type == "LevelData")
+                {
+                    foreach (string animation in new List<string> {"animations/antanimations/a3/levels/sp/rootlevel/rootlevel_a3/rootlevel_a3_win32_antstate",
+                        "animations/antanimations/levels/sp/rootlevel/rootlevel_win32_antstate",
+                        "animations/antanimations/gameplay/bundles/sharedbundles/common/animation/sharedbundleanimation_common_win32_antstate"})
                     {
                         EbxAssetEntry ebxEntry = AM.GetEbxEntry(animation);
                         ResAssetEntry resEntry = AM.GetResEntry(animation);

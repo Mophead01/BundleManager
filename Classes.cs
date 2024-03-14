@@ -82,6 +82,8 @@ namespace BundleManager
                 foreach (PropertyInfo pi in obj.GetType().GetProperties())
                 {
                     string propTypeName = pi.PropertyType.Name;
+                    if (obj.GetType().Name == "PathfindingBlob")
+                        App.Logger.Log(pi.Name);
                     if (exclusionTypes.Contains(propTypeName))
                         continue;
                     else if (propTypeName == "ResourceRef")
