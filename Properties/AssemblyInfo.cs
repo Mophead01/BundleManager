@@ -1,4 +1,5 @@
-﻿using Frosty.Core.Attributes;
+﻿using AutoBundleManagerPlugin;
+using Frosty.Core.Attributes;
 using FrostySdk;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -26,4 +27,4 @@ using System.Windows;
 [assembly: PluginVersion("0.0.0.1")]
 
 [assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefrontII)]
-
+[assembly: RegisterTabExtension(typeof(DependencyViewer))]
