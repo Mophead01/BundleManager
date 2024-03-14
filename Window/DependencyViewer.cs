@@ -1,5 +1,7 @@
-﻿using Frosty.Controls;
+﻿using AutoBundleManager.DependencyDetector;
+using Frosty.Controls;
 using Frosty.Core;
+using FrostySdk.Ebx;
 using FrostySdk.Managers;
 using System;
 using System.Collections.Generic;
@@ -9,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Shapes;
 using System.Xml.Linq;
 
 namespace AutoBundleManagerPlugin
@@ -21,7 +24,7 @@ namespace AutoBundleManagerPlugin
         private const string PART_BundlesList = "PART_BundlesList";
 
         private TextBlock bundlesSelectedTextBlock;
-        private TextBox bundlesListTextBox;
+        private TextBox dependenciesListTextBox;
 
         private TabControl miscTabControl;
 
@@ -39,7 +42,7 @@ namespace AutoBundleManagerPlugin
             base.OnApplyTemplate();
 
             bundlesSelectedTextBlock = GetTemplateChild(PART_BundlesSelected) as TextBlock;
-            bundlesListTextBox = GetTemplateChild(PART_BundlesList) as TextBox;
+            dependenciesListTextBox = GetTemplateChild(PART_BundlesList) as TextBox;
 
             App.EditorWindow.DataExplorer.SelectionChanged += dataExplorer_SelectionChanged;
             App.EditorWindow.MiscTabControl.SelectionChanged += miscTabControl_SelectionChanged;
@@ -70,27 +73,51 @@ namespace AutoBundleManagerPlugin
             if (entry == null)
             {
                 bundlesSelectedTextBlock.Text = "No asset selected";
-                bundlesListTextBox.Text = "";
+                dependenciesListTextBox.Text = "";
                 return;
             }
+            Dependencies parDependecies = new Dependencies(entry, App.AssetManager.GetEbx(entry));
 
-            StringBuilder sb1 = new StringBuilder();
-            StringBuilder sb2 = new StringBuilder();
+            StringBuilder sbEbxPr = new StringBuilder();
+            StringBuilder sbResId = new StringBuilder();
+            StringBuilder sbChunk = new StringBuilder();
+            StringBuilder sbTextRef = new StringBuilder();
 
-            foreach (int bundleId in entry.Bundles)
-                sb1.AppendLine(App.AssetManager.GetBundleEntry(bundleId).Name);
-            foreach (int bundleId in entry.AddedBundles)
-                sb2.AppendLine(App.AssetManager.GetBundleEntry(bundleId).Name);
+            foreach (Guid guid in parDependecies.ebxPointerGuids)
+                sbEbxPr.AppendLine($"Guid:\t{guid} \tName:\t{(App.AssetManager.GetEbxEntry(guid) != null ? App.AssetManager.GetEbxEntry(guid).Name : "ERROR MISSING EBX")}");
 
-            bundlesSelectedTextBlock.Text = "Bundles for " + entry.Filename;
-            bundlesListTextBox.Text = sb1.ToString();
-            if (sb2.Length > 0)
-                bundlesListTextBox.Text += "\r\nAdded to bundles:\r\n" + sb2.ToString();
+            foreach (ulong resRid in parDependecies.resRids)
+                sbResId.AppendLine($"ResRid:\t{resRid}\tName:\t{(App.AssetManager.GetResEntry(resRid) != null ? App.AssetManager.GetResEntry(resRid).Name : "ERROR MISSING RES")}");
+
+            foreach (Guid chkGuid in parDependecies.chunkGuids)
+                sbChunk.AppendLine($"Chunk:\t{chkGuid}\t{(App.AssetManager.GetChunkEntry(chkGuid) != null ? "" : "ERROR CHUNK DOES NOT EXIST")}");
+
+            foreach (string txtRef in parDependecies.refNames)
+                sbTextRef.AppendLine($"Text Reference:\t\"{txtRef}\"");
+
+            bundlesSelectedTextBlock.Text = "Bundle Manager Detected Dependencies Of " + entry.Filename;
+
+            dependenciesListTextBox.Text = "";
+
+            if (sbEbxPr.Length > 0)
+                dependenciesListTextBox.Text += "\r\nEbx PointerRefs:\r\n" + sbEbxPr.ToString();
+
+            if (sbResId.Length > 0)
+                dependenciesListTextBox.Text += "\r\nResource References:\r\n" + sbResId.ToString();
+
+            if (sbChunk.Length > 0)
+                dependenciesListTextBox.Text += "\r\nChunk Guids:\r\n" + sbChunk.ToString();
+
+            if (sbTextRef.Length > 0)
+                dependenciesListTextBox.Text += "\r\nText References:\r\n" + sbTextRef.ToString();
+
+            if (dependenciesListTextBox.Text.Length > 0)
+                dependenciesListTextBox.Text = string.Join("\n", dependenciesListTextBox.Text.Split('\n').Skip(1));
         }
     }
     public class DependencyViewer : TabExtension
     {
-        public override string TabItemName => "Bundles";
+        public override string TabItemName => "Dependencies";
 
         public override FrostyTabItem TabContent => new DependencyTabItem();
     }

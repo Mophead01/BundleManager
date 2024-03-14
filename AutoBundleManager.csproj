@@ -60,7 +60,7 @@
       <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\FrostyModSupport.dll</HintPath>
     </Reference>
     <Reference Include="FrostySdk">
-      <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\FrostySdk.dll</HintPath>
+      <HintPath>..\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\FrostySdk.dll</HintPath>
     </Reference>
     <Reference Include="FsLocalizationPlugin">
       <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\Plugins\FsLocalizationPlugin.dll</HintPath>
