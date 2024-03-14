@@ -1,5 +1,4 @@
-﻿using BundleManager;
-using Frosty.Core.Attributes;
+﻿using Frosty.Core.Attributes;
 using FrostySdk;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -22,20 +21,9 @@ using System.Windows;
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("4b612468-9b6a-4304-88a5-055c3575eb3d")]
 
-[assembly: PluginDisplayName("Bundle Manager")]
+[assembly: PluginDisplayName("Auto Bundle Manager")]
 [assembly: PluginAuthor("Mophead")]
-[assembly: PluginVersion("5.0.0.1")]
+[assembly: PluginVersion("0.0.0.1")]
 
-//[assembly: PluginValidForProfile((int)ProfileVersion.Battlefield1)]
-//[assembly: PluginValidForProfile((int)ProfileVersion.Battlefield5)]
-//[assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefront)]
 [assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefrontII)]
-[assembly: RegisterOptionsExtension(typeof(BundleManagerOptionsMenu.BundleManagerOptions))]
-[assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerCosmeticMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(MenuExtensions.BundleManagerLevelsMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(MenuExtensions.ClearBundlesMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(MenuExtensions.ExportPrerequisitsMenuExtension))]
-//[assembly: RegisterMenuExtension(typeof(MenuExtensions.TestBmAccuracyMenuExtension))]
-//[assembly: RegisterMenuExtension(typeof(CharacterDuplicatorMenuExtension))]
 
