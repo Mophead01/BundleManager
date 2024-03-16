@@ -100,6 +100,58 @@ namespace AutoBundleManagerPlugin
                 }
             }
         }
+        public static void EnumerateDetachedSubworlds(FrostyTaskWindow task)
+        {
+            object forLock = new object();
+            task.ParallelForeach("Caching Detached Bundle Inheritence", App.AssetManager.EnumerateEbx(type: "DetachedSetBlueprint"), (parEntry, index) =>
+            {
+                EbxAsset parAsset = App.AssetManager.GetEbx(parEntry);
+                Parallel.ForEach(parAsset.Objects, obj =>
+                {
+                    if (obj.GetType().Name == "SubWorldReferenceObjectData")
+                        SearchLevelData(BunNameCorrection(((dynamic)obj).BundleName), parEntry.Bundles.ToList(), forLock);
+                });
+            });
+        }
+        public static void EnumerateBlueprintBundles(FrostyTaskWindow task)
+        {
+            List<int> mpvurParentBundles = new List<string> { "win32/default_settings",
+                "win32/gameplay/bundles/sharedbundles/common/weapons/sharedbundleweapons_common",
+                "win32/gameplay/wrgameconfiguration",
+                "win32/gameplay/bundles/sharedbundles/frontend+mp/characters/sharedbundlecharacters_frontend+mp",
+                "win32/gameplay/bundles/sharedbundles/common/vehicles/sharedbundlevehiclescockpits"
+            }.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList();
+
+            foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles(BundleType.BlueprintBundle))
+            {
+                if (bEntry.Name.StartsWith("Win32/weapons/"))
+                    bundleTree.Add(App.AssetManager.GetBundleId(bEntry), new List<int>() { App.AssetManager.GetBundleId("win32/gameplay/bundles/sharedbundles/common/weapons/sharedbundleweapons_common") });
+                else if (bEntry.Name.Contains("Gameplay/Bundles/SP/"))
+                    bundleTree.Add(App.AssetManager.GetBundleId(bEntry), new List<int>() { App.AssetManager.GetBundleId("win32/Levels/SP/RootLevel/RootLevel") });
+                else
+                    bundleTree.Add(App.AssetManager.GetBundleId(bEntry), new List<int>(mpvurParentBundles) { });
+            }
+
+            object forLock = new object();
+            task.ParallelForeach("Caching Blueprint Bundle Inheritence", App.AssetManager.EnumerateEbx(type: "VisualUnlockRootAsset"), (parEntry, index) =>
+            {
+                if (parEntry.IsAdded)
+                    return;
+                dynamic refRoot = App.AssetManager.GetEbx(parEntry, true).RootObject;
+                lock (forLock)
+                {
+                    foreach (dynamic obj in refRoot.SkinInfos)
+                    {
+                        if (obj.ThirdPersonBundle.Parents.Count > 0)
+                            bundleTree[App.AssetManager.GetBundleId("win32/" + ((string)obj.ThirdPersonBundle.Name))].Add(App.AssetManager.GetBundleId("win32/" + (string)obj.ThirdPersonBundle.Parents[0].Name));
+                        if (obj.FirstPersonBundle.Parents.Count > 0)
+                            bundleTree[App.AssetManager.GetBundleId("win32/" + ((string)obj.FirstPersonBundle.Name))].Add(App.AssetManager.GetBundleId("win32/" + (string)obj.FirstPersonBundle.Parents[0].Name));
+                    }
+                }
+            });
+
+
+        }
         public static string BunNameCorrection(string Name)
         {
             if (ProfilesLibrary.DataVersion == (int)ProfileVersion.StarWarsBattlefront || ProfilesLibrary.DataVersion == (int)ProfileVersion.Battlefield1)
@@ -185,6 +237,14 @@ namespace AutoBundleManagerPlugin
                 List<int> newParents = new List<int>(pair.Value);
                 pair.Value.ForEach(parId => RemoveGrandParents(parId, ref newParents));
                 bundleTree[pair.Key] = newParents;
+            }
+            foreach(int bunId in App.AssetManager.EnumerateBundles().Select(bEntry => App.AssetManager.GetBundleId(bEntry)))
+            {
+                if (!bundleTree.ContainsKey(bunId))
+                {
+                    App.Logger.Log($"No data logged for {App.AssetManager.GetBundleEntry(bunId).Name}");
+                    bundleTree.Add(bunId, new List<int>());
+                }
             }
 
             using (NativeWriter txtWriter = new NativeWriter(new FileStream(cacheFileName.Replace(".cache", ".txt"), FileMode.Create)))

@@ -68,6 +68,8 @@ namespace AutoBundleManager.Logic
                 {
                     AbmBundleHierarchy.EnumerateSharedBundles(task);
                     AbmBundleHierarchy.EnumerateSublevelBundles(task);
+                    AbmBundleHierarchy.EnumerateDetachedSubworlds(task);
+                    AbmBundleHierarchy.EnumerateBlueprintBundles(task);
                     AbmBundleHierarchy.UpdateCache();
                 });
             });
