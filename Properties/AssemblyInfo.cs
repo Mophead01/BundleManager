@@ -33,3 +33,4 @@ using System.Windows;
 
 [assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestBlueprintBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestSublevelsMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmTestModule.AbmCacheBundleHierarchyMenuExtension))]

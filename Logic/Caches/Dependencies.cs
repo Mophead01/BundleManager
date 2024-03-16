@@ -51,8 +51,8 @@ namespace AutoBundleManagerPlugin
                     {
                         reader.BaseStream.Position = idx;
                         Guid ReadGuid = reader.ReadGuid();
-                        if (AbmRootInstancePlugin.GetEbxEntryByRootInstanceGuid(ReadGuid) != null)
-                            ebxPointerGuids.Add(AbmRootInstancePlugin.GetEbxEntryByRootInstanceGuid(ReadGuid).Guid);
+                        if (AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid) != null)
+                            ebxPointerGuids.Add(AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid).Guid);
                     }
                 }
             }
@@ -288,7 +288,7 @@ namespace AutoBundleManagerPlugin
             }
         }
     }
-    public static class DependenciesCache
+    public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
         private static int cacheVersion = 5;
@@ -395,7 +395,7 @@ namespace AutoBundleManagerPlugin
             cacheNeedsUpdating = false;
         }
 
-        static DependenciesCache()
+        static AbmDependenciesCache()
         {
             //Read Cache
             if (!File.Exists(cacheFileName))

@@ -52,6 +52,27 @@ namespace AutoBundleManager.Logic
             });
 
         }
+        public class AbmCacheBundleHierarchyMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Cache: Bundle Hierarchy";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Caching", "", (task) =>
+                {
+                    AbmBundleHierarchy.EnumerateSharedBundles(task);
+                    AbmBundleHierarchy.EnumerateSublevelBundles(task);
+                    AbmBundleHierarchy.UpdateCache();
+                });
+            });
+
+        }
 
         public class BundleTest
         {
@@ -76,7 +97,7 @@ namespace AutoBundleManager.Logic
                         if (idx > 150)
                             break;
                     }
-                    DependenciesCache.UpdateCache();
+                    AbmDependenciesCache.UpdateCache();
                     App.Logger.Log("Checked all bpbs");
                 });
             }
@@ -96,7 +117,7 @@ namespace AutoBundleManager.Logic
                         }
                         task.Update(progress: ((double)idx++ / (double)length) * 100.0d);
                     }
-                    DependenciesCache.UpdateCache();
+                    AbmDependenciesCache.UpdateCache();
                     App.Logger.Log("Checked all sublevel bundles");
                 });
             }
@@ -115,7 +136,7 @@ namespace AutoBundleManager.Logic
                     if (loadedAssets.ContainsKey(parEntry))
                         loadedAssets[parEntry] = true;
 
-                    DependencyData dependencies = DependenciesCache.GetDependencies(parEntry);
+                    DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
                     foreach(EbxAssetEntry ebxEntry in dependencies.ebxRefs)
                         if (ebxEntry != parEntry)
                             DetectDependencies(ebxEntry);

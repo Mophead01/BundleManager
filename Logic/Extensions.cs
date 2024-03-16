@@ -1,6 +1,10 @@
-﻿using FrostySdk.IO;
+﻿using Frosty.Core.Windows;
+using FrostySdk.IO;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AutoBundleManagerPlugin
 {
@@ -43,6 +47,12 @@ namespace AutoBundleManagerPlugin
             foreach (Guid guid in guidSet)
                 writer.Write(guid);
         }
+        public static void Write(this NativeWriter writer, List<int> intList)
+        {
+            writer.Write(intList.Count);
+            foreach (int value in intList)
+                writer.Write(value);
+        }
         #endregion
         #region Readers
 
@@ -74,5 +84,23 @@ namespace AutoBundleManagerPlugin
         }
 
         #endregion
+
+        public static void ParallelForeach<T>(this FrostyTaskWindow task, string taskName, IEnumerable<T> source, Action<T, int> body)
+        {
+            task.Update(taskName);
+            int forCount = source.Count();
+            int forIdx = 0;
+            object forLock = new object();
+
+            Parallel.ForEach(source, item =>
+            {
+                body(item, Interlocked.Increment(ref forCount));
+
+                lock (forLock)
+                {
+                    task.Update(progress: (float)forIdx++ / forCount * 100);
+                }
+            });
+        }
     }
 }

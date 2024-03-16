@@ -14,7 +14,7 @@ using System.Reflection;
 
 namespace AutoBundleManagerPlugin
 {
-    public static class AbmRootInstancePlugin
+    public static class AbmRootInstanceCache
     {
         public static bool IsLoaded { get; private set; }
 
@@ -53,7 +53,7 @@ namespace AutoBundleManagerPlugin
             return ebxRootInstanceGuidList.ContainsKey(guid) ? App.AssetManager.GetEbxEntry(ebxRootInstanceGuidList[guid]) : null;
         }
 
-        static AbmRootInstancePlugin()
+        static AbmRootInstanceCache()
         {
             using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_RootInstances.cache")))
             {
