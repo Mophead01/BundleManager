@@ -39,6 +39,10 @@
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="xcopy /Y $(TargetPath) $(SolutionDir)$(OutDir)Plugins\" />
 	</Target>
+
+	<ItemGroup>
+	  <None Remove="Data\Swbf2_RootInstances.cache" />
+	</ItemGroup>
 	
   <ItemGroup>
     <Reference Include="AtlasTexturePlugin">
@@ -69,11 +73,11 @@
       <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\Plugins\MeshSetPlugin.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="RootInstanceEntriesPlugin">
-      <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\Plugins\RootInstanceEntriesPlugin.dll</HintPath>
-    </Reference>
   </ItemGroup>
-
+	
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Swbf2_RootInstances.cache" />
+  </ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="xcopy /Y &quot;$(TargetPath)&quot; &quot;E:\C#\Frosty\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\Plugins&quot;" />
 	</Target>

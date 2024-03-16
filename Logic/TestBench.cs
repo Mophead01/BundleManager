@@ -1,8 +1,8 @@
 ﻿using AutoBundleManagerPlugin;
 using Frosty.Core;
 using Frosty.Core.Windows;
+using FrostySdk.IO;
 using FrostySdk.Managers;
-using RootInstanceEntiresPlugin;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -63,8 +63,6 @@ namespace AutoBundleManager.Logic
             {
                 FrostyTaskWindow.Show("Testing bundles", "", (task) =>
                 {
-                    if (!RootInstanceEbxEntryDb.IsLoaded)
-                        RootInstanceEbxEntryDb.ReadCache(task);
                     int length = App.AssetManager.EnumerateBundles(BundleType.BlueprintBundle).Count();
                     int idx = 0;
                     foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles(BundleType.BlueprintBundle))
@@ -87,8 +85,6 @@ namespace AutoBundleManager.Logic
             {
                 FrostyTaskWindow.Show("Testing bundles", "", (task) =>
                 {
-                    if (!RootInstanceEbxEntryDb.IsLoaded)
-                        RootInstanceEbxEntryDb.ReadCache(task);
                     int length = App.AssetManager.EnumerateBundles(BundleType.SubLevel).Count();
                     int idx = 0;
                     foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles(BundleType.SubLevel))
