@@ -1,4 +1,5 @@
-﻿using AutoBundleManagerPlugin;
+﻿using AutoBundleManager.Logic;
+using AutoBundleManagerPlugin;
 using Frosty.Core.Attributes;
 using FrostySdk;
 using System.Reflection;
@@ -28,3 +29,7 @@ using System.Windows;
 
 [assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefrontII)]
 [assembly: RegisterTabExtension(typeof(DependencyViewer))]
+
+
+[assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestBlueprintBundlesMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestSublevelsMenuExtension))]

@@ -1,4 +1,4 @@
-﻿using AutoBundleManager.DependencyDetector;
+﻿using AutoBundleManager.Logic;
 using Frosty.Controls;
 using Frosty.Core;
 using FrostySdk.Ebx;
@@ -76,7 +76,7 @@ namespace AutoBundleManagerPlugin
                 dependenciesListTextBox.Text = "";
                 return;
             }
-            Dependencies parDependecies = new Dependencies(entry, App.AssetManager.GetEbx(entry));
+            EbxDependencyDetector parDependecies = new EbxDependencyDetector(entry, App.AssetManager.GetEbx(entry));
 
             StringBuilder sbEbxPr = new StringBuilder();
             StringBuilder sbResId = new StringBuilder();
