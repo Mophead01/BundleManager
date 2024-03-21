@@ -83,6 +83,15 @@ namespace AutoBundleManagerPlugin
             return hashSet;
         }
 
+        public static List<int> ReadIntList(this NativeReader reader)
+        {
+            int count = reader.ReadInt();
+            List<int> intList = new List<int>();
+            for (int i = 0; i < count; i++)
+                intList.Add(reader.ReadInt());
+            return intList;
+        }
+
         #endregion
 
         public static void ParallelForeach<T>(this FrostyTaskWindow task, string taskName, IEnumerable<T> source, Action<T, int> body)

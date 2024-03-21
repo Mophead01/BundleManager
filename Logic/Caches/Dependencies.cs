@@ -296,6 +296,46 @@ namespace AutoBundleManagerPlugin
             }
         }
     }
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class AutoBundleManagerDependenciesCacheInterpruter
+    {
+        [DisplayName("Name")]
+        [Description("Asset Name")]
+        [IsReadOnly]
+        public string Name { get; set; }
+        [DisplayName("Sha1")]
+        [Description("Asset signature")]
+        [IsReadOnly]
+        public Sha1 Sha1 { get; set; }
+
+        [DisplayName("Ebx Assets")]
+        [Description("Ebx assets referenced by this asset")]
+        [IsReadOnly]
+        public List<CString> EbxAssets { get; set; }
+
+        [DisplayName("Res Assets")]
+        [Description("Res assets referenced by this asset")]
+        [IsReadOnly]
+        public List<CString> ResAssets { get; set; }
+
+        [DisplayName("Chunk Assets")]
+        [Description("Chunk assets referenced by this asset")]
+        [IsReadOnly]
+        public List<Guid> ChunkAssets { get; set; }
+        public AutoBundleManagerDependenciesCacheInterpruter()
+        {
+
+        }
+
+        public AutoBundleManagerDependenciesCacheInterpruter(KeyValuePair<Sha1, DependencyData> pair)
+        {
+            Name = pair.Value.srcName;
+            Sha1 = pair.Key;
+            EbxAssets = pair.Value.ebxRefs.Select(ebxRef => new CString(ebxRef.Name)).ToList();
+            ResAssets = pair.Value.resRefs.Select(resRef => new CString(resRef.Name)).ToList();
+            ChunkAssets = pair.Value.chkRefs.Select(chkRef => chkRef.Id).ToList();
+        }
+    }
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";

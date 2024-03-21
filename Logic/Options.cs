@@ -41,10 +41,34 @@ namespace AutoBundleManagerPlugin
         [Description("Cached list of ebx, chunk and resource depdencies from a res asset")]
         [IsReadOnly]
         public List<AutoBundleManagerDependenciesCacheInterpruter> CachedRes { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Blueprint Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedBpbs { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Sublevel Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedSublevels { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Shared Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedSharedBundles { get; set; }
         public AutoBundleManagerOptionsGrid()
         {
             CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
+            CachedBpbs = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.BlueprintBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedSharedBundles = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SharedBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedSublevels = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SubLevel).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
         }
     }
     public class AutoBundleManagerOptionsViewer : FrostyBaseEditor
@@ -79,45 +103,5 @@ namespace AutoBundleManagerPlugin
             AbmOptionsPropertyGrid.SetClass(optionsGrid);
         }
 
-    }
-    [EbxClassMeta(EbxFieldType.Struct)]
-    public class AutoBundleManagerDependenciesCacheInterpruter
-    {
-        [DisplayName("Name")]
-        [Description("Asset Name")]
-        [IsReadOnly]
-        public string Name { get; set; }
-        [DisplayName("Sha1")]
-        [Description("Asset signature")]
-        [IsReadOnly]
-        public Sha1 Sha1 { get; set; }
-
-        [DisplayName("Ebx Assets")]
-        [Description("Ebx assets referenced by this asset")]
-        [IsReadOnly]
-        public List<CString> EbxAssets { get; set; }
-
-        [DisplayName("Res Assets")]
-        [Description("Res assets referenced by this asset")]
-        [IsReadOnly]
-        public List<CString> ResAssets { get; set; }
-
-        [DisplayName("Chunk Assets")]
-        [Description("Chunk assets referenced by this asset")]
-        [IsReadOnly]
-        public List<Guid> ChunkAssets { get; set; }
-        public AutoBundleManagerDependenciesCacheInterpruter()
-        {
-
-        }
-
-        public AutoBundleManagerDependenciesCacheInterpruter(KeyValuePair<Sha1, DependencyData> pair)
-        {
-            Name = pair.Value.srcName;
-            Sha1 = pair.Key;
-            EbxAssets = pair.Value.ebxRefs.Select(ebxRef => new CString(ebxRef.Name)).ToList();
-            ResAssets = pair.Value.resRefs.Select(resRef => new CString(resRef.Name)).ToList();
-            ChunkAssets = pair.Value.chkRefs.Select(chkRef => chkRef.Id).ToList();
-        }
     }
 }

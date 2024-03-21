@@ -10,21 +10,239 @@ using Frosty.Core.Windows;
 using FrostySdk.IO;
 using System.IO;
 using System.Xml.Linq;
+using Frosty.Hash;
+using System.Reflection;
+using FrostySdk.Ebx;
+using FrostySdk.Attributes;
 
 namespace AutoBundleManagerPlugin
 {
-    public static class AbmBundleHierarchy
+    public class BundleHeapEntry
     {
-        private static int cacheVersion = 5;
+        public int BundleId { get; private set; }
+        public bool IsCustomBundle { get; private set; } = false;
+        public List<int> ParentIds { get; private set; } = new List<int>();
+        public List<int> CustomParentIds { get; private set; } = new List<int>();
+
+        #region Parent Bundle Id Functions
+
+        /// <summary>
+        /// Enumerates the parent IDs of the current object, including custom parent IDs, and optionally grandparent IDs. Ordering is not important
+        /// </summary>
+        /// <param name="enumerateGrandparents">Specifies whether to include grandparent IDs in the enumeration. Default is true.</param>
+        /// <returns>An IEnumerable<int> containing the parent IDs of the current object.</returns>
+        public IEnumerable<int> EnumerateParentBundleIds(bool enumerateGrandparents = true)
+        {
+            // Combine the default and custom parent IDs into a single list
+            List<int> fullParentIds = new List<int>();
+
+            // If specified, enumerate grandparent IDs by recursively appending parents to the list
+            if (enumerateGrandparents)
+            {
+                // Iterate through direct parent IDs and append their parents to the list
+                foreach (int parentId in ParentIds.Concat(CustomParentIds))
+                    AppendParentBundleIdsToList(ref fullParentIds, parentId);
+            }
+            else
+                fullParentIds = ParentIds.Concat(CustomParentIds).ToList();
+
+            // Return the final list of parent IDs
+            return fullParentIds;
+        }
+
+        /// <summary>
+        /// Recursively appends parent bundle IDs to the provided list based on the specified bundle ID.
+        /// </summary>
+        /// <param name="parentIdList">The list to which parent bundle IDs are appended.</param>
+        /// <param name="bunId">The bundle ID for which parents are to be appended.</param>
+        private void AppendParentBundleIdsToList(ref List<int> parentIdList, int bunId)
+        {
+
+            // Check if the bundle is present in the BundleHeap
+            if (AbmBundleHeap.Bundles.ContainsKey(bunId))
+            {
+                // Iterate through the parents of the current bundle and recursively append their parents
+                foreach (int parentBunId in AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds(false))
+                {
+                    // Check if the parent bundle ID is not already in the list before appending
+                    if (!parentIdList.Contains(parentBunId))
+                        AppendParentBundleIdsToList(ref parentIdList, parentBunId);
+                }
+            }
+            else
+            {
+                // Throw an exception if the bundle is not found in the BundleHeap. If the BM script works this should never happen.
+                throw new Exception($"Logic Error: Bundle not logged by bundle heap \"{App.AssetManager.GetBundleEntry(bunId).Name}\"");
+            }
+
+            // Add the current bundle ID to the list
+            parentIdList.Insert(0, bunId);
+        }
+
+        /// <summary>
+        /// Adds a parent bundle ID to the current object's parent lists based on the specified bundle ID and custom parent flag.
+        /// </summary>
+        /// <param name="bunId">The bundle ID to be added as a parent.</param>
+        /// <param name="customParent">A flag indicating whether the parent is a custom parent. If false, it is considered a default parent.</param>
+        public void AddParentBundleId(int bunId, bool customParent)
+        {
+            // Check if the specified bundle ID is already among the parents
+            if (EnumerateParentBundleIds(false).Contains(bunId))
+                return;
+
+            // Determine whether to add the parent ID to default or custom parents based on the flag
+            if (!customParent)
+                ParentIds.Add(bunId);
+            else
+                CustomParentIds.Add(bunId);
+        }
+
+        /// <summary>
+        /// Clears the list of custom parent bundle IDs associated with the current object.
+        /// </summary>
+        public void ClearCustomParentBundleIds()
+        {
+            // Clears the list of custom parent bundle IDs
+            CustomParentIds.Clear();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the BundleHeapEntry class with the specified parameters.
+        /// </summary>
+        /// <param name="bundleId">The unique identifier of the bundle.</param>
+        /// <param name="isCustomBundle">A flag indicating whether the bundle is a custom bundle.</param>
+        /// <param name="parentsToAdd">A list of parent bundle IDs to be associated with the new entry.</param>
+        /// 
+
+        #endregion
+        public BundleHeapEntry(int bundleId, bool isCustomBundle, List<int> parentsToAdd)
+        {
+            BundleId = bundleId;
+            IsCustomBundle = isCustomBundle;
+            // Initialize parent lists based on the custom bundle flag
+            if (!isCustomBundle)
+                // If it's a custom bundle, set ParentIds to the provided list
+                ParentIds = parentsToAdd;
+            else
+                // If it's not a custom bundle, set CustomParentIds to the provided list
+                CustomParentIds = parentsToAdd;
+
+            // Add the new entry to the BundleHeap.Bundles dictionary using the bundle ID as the key
+            AbmBundleHeap.Bundles.Add(bundleId, this);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class BundleHeapEntryViewer
+    {
+        [DisplayName("Name")]
+        [Description("Bundle Name")]
+        [IsReadOnly]
+        public CString BundleName { get; set; }
+
+        [DisplayName("Name")]
+        [Description("Bundle Parent Names")]
+        [IsReadOnly]
+        public List<CString> BundleParents { get; set; }
+        public BundleHeapEntryViewer(BundleHeapEntry heapEntry)
+        {
+            BundleName = App.AssetManager.GetBundleEntry(heapEntry.BundleId).Name;
+            BundleParents = heapEntry.EnumerateParentBundleIds().Select(parId => new CString(App.AssetManager.GetBundleEntry(parId).Name)).ToList();
+        }
+        public BundleHeapEntryViewer()
+        {
+
+        }
+    }
+    public static class AbmBundleHeap
+    {
+        public static Dictionary<int, BundleHeapEntry> Bundles = new Dictionary<int, BundleHeapEntry>();
+        public static void ClearCustomBundles()
+        {
+            Dictionary<int, BundleHeapEntry> bundlesTempCopy = new Dictionary<int, BundleHeapEntry>(Bundles);
+            foreach (KeyValuePair<int, BundleHeapEntry> pair in bundlesTempCopy)
+            {
+                pair.Value.ClearCustomParentBundleIds();
+                if (pair.Value.IsCustomBundle)
+                    Bundles.Remove(pair.Key);
+            }
+        }
+        //Verifies there's no bundle parent-child loop collisions. Expensive so use only when needed
+        public static bool VerifyHeapIntegrity(bool checkCustomOnly)
+        {
+            bool integrityCompromised = false;
+            List<List<int>> foundLoops = new List<List<int>>();
+            void VerifyParents(int bunId, List<int> checkedChildrenBunIds)
+            {
+                if (AbmBundleHeap.Bundles.ContainsKey(bunId))
+                {
+                    foreach (int parentBunId in AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds(false))
+                    {
+                        if (checkedChildrenBunIds.Contains(parentBunId))
+                        {
+                            integrityCompromised = true;
+                            foundLoops.Add(new List<int>(checkedChildrenBunIds) { parentBunId });
+                        }
+                        else
+                            VerifyParents(parentBunId, new List<int>(checkedChildrenBunIds) { parentBunId });
+                    }
+                }
+                else
+                    throw new Exception($"Logic Error: Bundle not logged by bundle heap \"{App.AssetManager.GetBundleEntry(bunId).Name}\"");
+            }
+
+            foreach (KeyValuePair<int, BundleHeapEntry> bundlePair in Bundles)
+            {
+                if (checkCustomOnly && (bundlePair.Value.IsCustomBundle || bundlePair.Value.CustomParentIds.Count > 0))
+                    continue;
+                VerifyParents(bundlePair.Key, new List<int> { bundlePair.Key });
+            }
+
+            if (integrityCompromised)
+            {
+                App.Logger.LogError("MAJOR ERROR");
+                App.Logger.LogError("The Bundle Manager has detected an infinite bundle loop caused by your project file.");
+                App.Logger.LogError("You must fix your project file before the Bundle Manager can execute.");
+                App.Logger.LogError("Detected Bundle Loops:");
+                int loopIdx = 1;
+                foreach (List<int> loopList in foundLoops)
+                {
+                    App.Logger.LogError($"Loop {loopIdx++}");
+                    int bundleIdx = 1;
+                    foreach (int bundleId in loopList)
+                    {
+                        App.Logger.LogError($"\tBundle: {bundleIdx++} \"{App.AssetManager.GetBundleEntry(bundleId).Name}\"");
+                    }
+                    App.Logger.Log("\n");
+
+                }
+            }
+
+            return integrityCompromised;
+        }
+        static AbmBundleHeap()
+        {
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_BundleHeap.cache")))
+            {
+                if (reader.ReadNullTerminatedString() != "MopMagicBundleHi" || reader.ReadInt() != 0)
+                    return;
+                int bunCount = reader.ReadInt();
+                for (int i = 0; i < bunCount; i++)
+                    new BundleHeapEntry(reader.ReadInt(), false, reader.ReadIntList());
+            }
+        }
+    }
+    public static class AbmBundleHeapCacheCreator
+    {
         private static Dictionary<int, List<int>> bundleTree = new Dictionary<int, List<int>>();
         public static void EnumerateSharedBundles(FrostyTaskWindow task)
         {
             object forLock = new object();
-            task.ParallelForeach("Caching Shared Bundle Inheritence", App.AssetManager.EnumerateBundles(type:BundleType.SharedBundle), (bEntry, index) => 
+            task.ParallelForeach("Caching Shared Bundle Inheritence", App.AssetManager.EnumerateBundles(type: BundleType.SharedBundle), (bEntry, index) =>
             {
                 int bunId = App.AssetManager.GetBundleId(bEntry);
                 List<int> parents = FindSharedBundleParents(bunId);
-                lock(forLock)
+                lock (forLock)
                 {
                     bundleTree.Add(bunId, parents);
                 }
@@ -216,7 +434,7 @@ namespace AutoBundleManagerPlugin
                     return;
                 List<int> granParentIds = bundleTree[bunId];
 
-                foreach(int granId in granParentIds)
+                foreach (int granId in granParentIds)
                 {
                     if (parentList.Contains(granId))
                         parentList.Remove(granId);
@@ -238,7 +456,7 @@ namespace AutoBundleManagerPlugin
                 pair.Value.ForEach(parId => RemoveGrandParents(parId, ref newParents));
                 bundleTree[pair.Key] = newParents;
             }
-            foreach(int bunId in App.AssetManager.EnumerateBundles().Select(bEntry => App.AssetManager.GetBundleId(bEntry)))
+            foreach (int bunId in App.AssetManager.EnumerateBundles().Select(bEntry => App.AssetManager.GetBundleId(bEntry)))
             {
                 if (!bundleTree.ContainsKey(bunId))
                 {

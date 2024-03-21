@@ -41,6 +41,7 @@
 	</Target>
 
 	<ItemGroup>
+	  <None Remove="Data\Swbf2_BundleHeapCache" />
 	  <None Remove="Data\Swbf2_RootInstances.cache" />
 	</ItemGroup>
 	
@@ -77,6 +78,7 @@
 	
   <ItemGroup>
     <EmbeddedResource Include="Data\Swbf2_RootInstances.cache" />
+	  <EmbeddedResource Include="Data\Swbf2_BundleHeap.cache" />
   </ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="xcopy /Y &quot;$(TargetPath)&quot; &quot;E:\C#\Frosty\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\Plugins&quot;" />

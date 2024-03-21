@@ -64,13 +64,13 @@ namespace AutoBundleManager.Logic
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                FrostyTaskWindow.Show("Caching", "", (task) =>
+                FrostyTaskWindow.Show("Caching Bundles", "", (task) =>
                 {
-                    AbmBundleHierarchy.EnumerateSharedBundles(task);
-                    AbmBundleHierarchy.EnumerateSublevelBundles(task);
-                    AbmBundleHierarchy.EnumerateDetachedSubworlds(task);
-                    AbmBundleHierarchy.EnumerateBlueprintBundles(task);
-                    AbmBundleHierarchy.UpdateCache();
+                    AbmBundleHeapCacheCreator.EnumerateSharedBundles(task);
+                    AbmBundleHeapCacheCreator.EnumerateSublevelBundles(task);
+                    AbmBundleHeapCacheCreator.EnumerateDetachedSubworlds(task);
+                    AbmBundleHeapCacheCreator.EnumerateBlueprintBundles(task);
+                    AbmBundleHeapCacheCreator.UpdateCache();
                 });
             });
 
