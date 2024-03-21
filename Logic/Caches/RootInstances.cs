@@ -11,6 +11,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using FrostySdk.Ebx;
+using FrostySdk.Attributes;
 
 namespace AutoBundleManagerPlugin
 {
@@ -19,7 +21,7 @@ namespace AutoBundleManagerPlugin
         public static bool IsLoaded { get; private set; }
 
         private const uint cacheVersion = 1;
-        private static Dictionary<Guid, Guid> ebxRootInstanceGuidList = new Dictionary<Guid, Guid>();
+        public static Dictionary<Guid, Guid> ebxRootInstanceGuidList = new Dictionary<Guid, Guid>();
 
         //public static void LoadEbxRootInstanceEntries(FrostyTaskWindow task)
         //{
@@ -98,5 +100,31 @@ namespace AutoBundleManagerPlugin
         //        }
         //    }
         //}
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RootInstancesViewer
+    {
+        [DisplayName("Ebx Name")]
+        [IsReadOnly]
+        public CString EbxName { get; set; }
+
+        [DisplayName("Asset Guid")]
+        [IsReadOnly]
+        public Guid AssetGuid { get; set; }
+
+        [DisplayName("Root Instance Guid")]
+        [IsReadOnly]
+        public Guid RootInstanceGuid { get; set; }
+        public RootInstancesViewer((Guid, Guid) pair)
+        {
+            EbxName = App.AssetManager.GetEbxEntry(pair.Item2) == null ? "null ref" : App.AssetManager.GetEbxEntry(pair.Item2).Name;
+            AssetGuid = pair.Item2;
+            RootInstanceGuid = pair.Item1;
+        }
+        public RootInstancesViewer()
+        {
+
+        }
     }
 }

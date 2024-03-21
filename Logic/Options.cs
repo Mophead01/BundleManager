@@ -28,6 +28,17 @@ namespace AutoBundleManagerPlugin
         [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
         public bool CompleteMeshVariations { get { return AutoBundleManagerOptions.CompleteMeshVariations; } set { AutoBundleManagerOptions.CompleteMeshVariations = value; } }
 
+        //
+        //  Read Only Caches
+        //
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Ebx Root Instance Cache")]
+        [Description("Cached list of ebx root instance Guids")]
+        [IsReadOnly]
+        public List<RootInstancesViewer> RootInstances { get; set; }
+
         [Category("ReadOnlyCaches")]
         [EbxFieldMeta(EbxFieldType.Array)]
         [DisplayName("Ebx Dependancy Cache")]
@@ -44,10 +55,10 @@ namespace AutoBundleManagerPlugin
 
         [Category("ReadOnlyCaches")]
         [EbxFieldMeta(EbxFieldType.Array)]
-        [DisplayName("Blueprint Bundle Heap Cache")]
+        [DisplayName("Shared Bundle Heap Cache")]
         [Description("Cached list of bundles and their parents")]
         [IsReadOnly]
-        public List<BundleHeapEntryViewer> CachedBpbs { get; set; }
+        public List<BundleHeapEntryViewer> CachedSharedBundles { get; set; }
 
         [Category("ReadOnlyCaches")]
         [EbxFieldMeta(EbxFieldType.Array)]
@@ -58,12 +69,13 @@ namespace AutoBundleManagerPlugin
 
         [Category("ReadOnlyCaches")]
         [EbxFieldMeta(EbxFieldType.Array)]
-        [DisplayName("Shared Bundle Heap Cache")]
+        [DisplayName("Blueprint Bundle Heap Cache")]
         [Description("Cached list of bundles and their parents")]
         [IsReadOnly]
-        public List<BundleHeapEntryViewer> CachedSharedBundles { get; set; }
+        public List<BundleHeapEntryViewer> CachedBpbs { get; set; }
         public AutoBundleManagerOptionsGrid()
         {
+            RootInstances = AbmRootInstanceCache.ebxRootInstanceGuidList.Select(pair => new RootInstancesViewer((pair.Key, pair.Value))).ToList();
             CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedBpbs = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.BlueprintBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
