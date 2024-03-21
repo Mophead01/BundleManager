@@ -36,4 +36,24 @@
         </Setter>
     </Style>
 
+
+    <Style TargetType="{x:Type local:AutoBundleManagerOptionsViewer}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:AutoBundleManagerOptionsViewer}">
+                    <Grid Background="{StaticResource ControlBackground}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ctrl:FrostyDockablePanel TitleBarVisible="False">
+                            <Grid>
+                                <core:FrostyPropertyGrid x:Name="PART_AbmOptionsViewer" ClassViewVisible="True"/>
+                            </Grid>
+                        </ctrl:FrostyDockablePanel>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

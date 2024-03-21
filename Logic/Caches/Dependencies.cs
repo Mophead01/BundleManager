@@ -227,12 +227,16 @@ namespace AutoBundleManagerPlugin
 
     public class DependencyRaw
     {
+        public string srcName;
+        public bool isRes;
         public HashSet<string> refNames = new HashSet<string>();
         public HashSet<Guid> ebxGuids = new HashSet<Guid>();
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public HashSet<Guid> chunkGuids = new HashSet<Guid>();
-        public DependencyRaw(HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, HashSet<Guid> chunkGuids)
+        public DependencyRaw(string srcName, bool isRes, HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, HashSet<Guid> chunkGuids)
         {
+            this.srcName = srcName;
+            this.isRes = isRes;
             this.refNames = refNames;
             this.ebxGuids = ebxGuids;
             this.resRids = resRids;
@@ -253,21 +257,25 @@ namespace AutoBundleManagerPlugin
     }
     public class DependencyData
     {
+        public string srcName;
+        public bool isRes;
         public HashSet<EbxAssetEntry> ebxRefs = new HashSet<EbxAssetEntry>();
         public HashSet<ResAssetEntry> resRefs = new HashSet<ResAssetEntry>();
         public HashSet<ChunkAssetEntry> chkRefs = new HashSet<ChunkAssetEntry>();
         public DependencyData(DependencyRaw rawDependency)
         {
+            srcName = rawDependency.srcName;
+            isRes = rawDependency.isRes;
             foreach (Guid ebxGuid in rawDependency.ebxGuids)
             {
                 EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(ebxGuid);
-                if (refEntry != null)
+                if (refEntry != null && !(!isRes && refEntry.Name == srcName))
                     ebxRefs.Add(refEntry);
             }
             foreach (ulong resId in rawDependency.resRids)
             {
                 ResAssetEntry resEntry = App.AssetManager.GetResEntry(resId);
-                if (resEntry != null)
+                if (resEntry != null && !(isRes && resEntry.Name == srcName))
                     resRefs.Add(resEntry);
             }
             foreach (Guid chkGuid in rawDependency.chunkGuids)
@@ -279,11 +287,11 @@ namespace AutoBundleManagerPlugin
             foreach (string refName in rawDependency.refNames)
             {
                 EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(refName);
-                if (refEntry != null)
+                if (refEntry != null && !(!isRes && refEntry.Name == srcName))
                     ebxRefs.Add(refEntry);
 
                 ResAssetEntry resEntry = App.AssetManager.GetResEntry(refName);
-                if (resEntry != null)
+                if (resEntry != null && !(isRes && resEntry.Name == srcName))
                     resRefs.Add(resEntry);
             }
         }
@@ -291,7 +299,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 5;
+        private static int cacheVersion = 7;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencyRaw> dependencies = new Dictionary<Sha1, DependencyRaw>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
@@ -310,13 +318,13 @@ namespace AutoBundleManagerPlugin
                 if (parEntry.GetType() == typeof(EbxAssetEntry))
                 {
                     EbxDependencyDetector ebxDependencyDetector = new EbxDependencyDetector((EbxAssetEntry)parEntry, App.AssetManager.GetEbx((EbxAssetEntry)parEntry));
-                    dependencies.Add(sha1, new DependencyRaw(ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, ebxDependencyDetector.chunkGuids) { });
+                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, ebxDependencyDetector.chunkGuids) { });
                 }
                 else if (parEntry.GetType() == typeof(ResAssetEntry))
                 {
                     ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)((ResAssetEntry)parEntry).ResType]);
                     extension.ExtractData(((ResAssetEntry)parEntry).ResRid);
-                    dependencies.Add(sha1, new DependencyRaw(extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids) { });
+                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids) { });
                 }
                 else
                     throw new Exception("Unknown AssetEntry Type");
@@ -372,6 +380,10 @@ namespace AutoBundleManagerPlugin
         {
             return new DependencyData(GetRawDependencies(parEntry));
         }
+        public static Dictionary<Sha1, DependencyData> GetAllCachedDependencies()
+        {
+            return dependencies.ToDictionary(pair => pair.Key, pair => new DependencyData(pair.Value));
+        }
         public static void UpdateCache()
         {
             if (!cacheNeedsUpdating)
@@ -386,6 +398,8 @@ namespace AutoBundleManagerPlugin
                 foreach(KeyValuePair<Sha1, DependencyRaw> pair in dependencies)
                 {
                     writer.Write(pair.Key);
+                    writer.WriteNullTerminatedString(pair.Value.srcName);
+                    writer.Write(pair.Value.isRes);
                     writer.Write(pair.Value.refNames);
                     writer.Write(pair.Value.ebxGuids);
                     writer.Write(pair.Value.resRids);
@@ -406,7 +420,7 @@ namespace AutoBundleManagerPlugin
                     return;
                 int dependencyCount = reader.ReadInt();
                 for (int i = 0; i < dependencyCount; i++)
-                    dependencies.Add(reader.ReadSha1(), new DependencyRaw(reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), reader.ReadHashSetULongs(), reader.ReadHashSetGuids()));
+                    dependencies.Add(reader.ReadSha1(), new DependencyRaw(reader.ReadNullTerminatedString(), reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), reader.ReadHashSetULongs(), reader.ReadHashSetGuids()));
             }
         }
     }
