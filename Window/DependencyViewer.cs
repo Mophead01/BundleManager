@@ -76,40 +76,47 @@ namespace AutoBundleManagerPlugin
                 dependenciesListTextBox.Text = "";
                 return;
             }
-            EbxDependencyDetector parDependecies = new EbxDependencyDetector(entry, App.AssetManager.GetEbx(entry));
+            //EbxDependencyDetector parDependecies = new EbxDependencyDetector(entry, App.AssetManager.GetEbx(entry));
+            DependencyData dependencies = AbmDependenciesCache.GetDependencies(entry);
 
             StringBuilder sbEbxPr = new StringBuilder();
             StringBuilder sbResId = new StringBuilder();
             StringBuilder sbChunk = new StringBuilder();
-            StringBuilder sbTextRef = new StringBuilder();
+            foreach (EbxAssetEntry ebxEntry in dependencies.ebxRefs)
+                sbEbxPr.AppendLine($"\tEbx Ref: {ebxEntry.Name}");
+            foreach (ResAssetEntry resEntry in dependencies.resRefs)
+                sbResId.AppendLine($"\tRes Ref: {resEntry.Name}");
+            foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs)
+                sbChunk.AppendLine($"\tChk Ref: {chkEntry.Name}");
+            //StringBuilder sbTextRef = new StringBuilder();
 
-            foreach (Guid guid in parDependecies.ebxPointerGuids)
-                sbEbxPr.AppendLine($"Guid:\t{guid} \tName:\t{(App.AssetManager.GetEbxEntry(guid) != null ? App.AssetManager.GetEbxEntry(guid).Name : "ERROR MISSING EBX")}");
+            //foreach (Guid guid in parDependecies.ebxPointerGuids)
+            //    sbEbxPr.AppendLine($"Guid:\t{guid} \tName:\t{(App.AssetManager.GetEbxEntry(guid) != null ? App.AssetManager.GetEbxEntry(guid).Name : "ERROR MISSING EBX")}");
 
-            foreach (ulong resRid in parDependecies.resRids)
-                sbResId.AppendLine($"ResRid:\t{resRid}\tName:\t{(App.AssetManager.GetResEntry(resRid) != null ? App.AssetManager.GetResEntry(resRid).Name : "ERROR MISSING RES")}");
+            //foreach (ulong resRid in parDependecies.resRids)
+            //    sbResId.AppendLine($"ResRid:\t{resRid}\tName:\t{(App.AssetManager.GetResEntry(resRid) != null ? App.AssetManager.GetResEntry(resRid).Name : "ERROR MISSING RES")}");
 
-            foreach (Guid chkGuid in parDependecies.chunkGuids)
-                sbChunk.AppendLine($"Chunk:\t{chkGuid}\t{(App.AssetManager.GetChunkEntry(chkGuid) != null ? "" : "ERROR CHUNK DOES NOT EXIST")}");
+            //foreach (Guid chkGuid in parDependecies.chunkGuids)
+            //    sbChunk.AppendLine($"Chunk:\t{chkGuid}\t{(App.AssetManager.GetChunkEntry(chkGuid) != null ? "" : "ERROR CHUNK DOES NOT EXIST")}");
 
-            foreach (string txtRef in parDependecies.refNames)
-                sbTextRef.AppendLine($"Text Reference:\t\"{txtRef}\"");
+            //foreach (string txtRef in parDependecies.refNames)
+            //    sbTextRef.AppendLine($"Text Reference:\t\"{txtRef}\"");
 
             bundlesSelectedTextBlock.Text = "Bundle Manager Detected Dependencies Of " + entry.Filename;
 
             dependenciesListTextBox.Text = "";
 
             if (sbEbxPr.Length > 0)
-                dependenciesListTextBox.Text += "\r\nEbx PointerRefs:\r\n" + sbEbxPr.ToString();
+                dependenciesListTextBox.Text += "\r\nEbx References:\r\n" + sbEbxPr.ToString();
 
             if (sbResId.Length > 0)
                 dependenciesListTextBox.Text += "\r\nResource References:\r\n" + sbResId.ToString();
 
             if (sbChunk.Length > 0)
-                dependenciesListTextBox.Text += "\r\nChunk Guids:\r\n" + sbChunk.ToString();
+                dependenciesListTextBox.Text += "\r\nChunk References:\r\n" + sbChunk.ToString();
 
-            if (sbTextRef.Length > 0)
-                dependenciesListTextBox.Text += "\r\nText References:\r\n" + sbTextRef.ToString();
+            //if (sbTextRef.Length > 0)
+            //    dependenciesListTextBox.Text += "\r\nText References:\r\n" + sbTextRef.ToString();
 
             if (dependenciesListTextBox.Text.Length > 0)
                 dependenciesListTextBox.Text = string.Join("\n", dependenciesListTextBox.Text.Split('\n').Skip(1));

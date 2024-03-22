@@ -1,5 +1,6 @@
 ﻿using Frosty.Core.Windows;
 using FrostySdk.IO;
+using FrostySdk.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -110,6 +111,15 @@ namespace AutoBundleManagerPlugin
                     task.Update(progress: (float)forIdx++ / forCount * 100);
                 }
             });
+        }
+        public static bool IsInBundleHeap(this AssetEntry assetEntry, int bunId, List<int> parentIds) 
+        {
+            if (assetEntry.IsInBundle(bunId))
+                return true;
+            foreach(int parId in parentIds)
+                if (assetEntry.IsInBundle(parId))
+                    return true;
+            return false;
         }
     }
 }

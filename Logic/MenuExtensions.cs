@@ -31,7 +31,7 @@ namespace AutoBundleManager.Logic
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                BundleTest bunTest = new BundleTest();
+                AbmTestFunctions bunTest = new AbmTestFunctions();
                 bunTest.BlueprintBundleTest();
             });
 
@@ -48,8 +48,42 @@ namespace AutoBundleManager.Logic
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                BundleTest bunTest = new BundleTest();
-                bunTest.SublevelBundleTest();
+                AbmTestFunctions bunTest = new AbmTestFunctions();
+                bunTest.SublevelTest();
+            });
+
+        }
+        public class AutoBundleManagerTestBlueprintBundlesParentsMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "TEST: Parent BPBs";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                AbmTestFunctions bunTest = new AbmTestFunctions();
+                bunTest.BlueprintBundleTest(false);
+            });
+
+        }
+        public class AutoBundleManagerTestSublevelsParentMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "TEST: Parent Sublevels";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                AbmTestFunctions bunTest = new AbmTestFunctions();
+                bunTest.SublevelTest(false);
             });
 
         }

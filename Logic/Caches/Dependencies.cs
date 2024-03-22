@@ -168,6 +168,17 @@ namespace AutoBundleManagerPlugin
                     continue;
                 ExtractField(PI.GetValue(obj));
             }
+
+            //Remove cases where the bundle manager is being overly cautious
+            switch (obj.GetType().Name) 
+            {
+                case "VisualUnlockRootAsset":
+                    string vurName = ((dynamic)obj).Name;
+                    if (refNames.Contains(vurName))
+                        refNames.Remove(vurName);
+                    break;
+            }
+
         }
         void ExtractField(object Value)
         {
@@ -207,7 +218,7 @@ namespace AutoBundleManagerPlugin
                         chunkGuids.Add((Guid)Value);
                         break;
                     case Type t when t == typeof(FileRef):
-                        refNames.Add("FILEREF IN THIS FILE REPLACEME");
+                        //refNames.Add("FILEREF IN THIS FILE REPLACEME");
                         break;
                     case Type t when t == typeof(TypeRef):
                         refName = ((TypeRef)Value).Name;
@@ -339,7 +350,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 7;
+        private static int cacheVersion = 8;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencyRaw> dependencies = new Dictionary<Sha1, DependencyRaw>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);

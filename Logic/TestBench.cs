@@ -16,13 +16,13 @@ namespace AutoBundleManager.Logic
 {
     public class AbmTestModule
     {
-        public class BundleTest
+        public class AbmTestFunctions
         {
-            public BundleTest()
+            public AbmTestFunctions()
             {
                 
             }
-            public void BlueprintBundleTest()
+            public void BlueprintBundleTest(bool depenTest = true)
             {
                 FrostyTaskWindow.Show("Testing bundles", "", (task) =>
                 {
@@ -33,18 +33,21 @@ namespace AutoBundleManager.Logic
                         if (new List<string> { "_bpb", "_bpb_bundle1p_win32" }.Any(ender => bEntry.Name.EndsWith(ender)))
                         {
                             task.Update(bEntry.DisplayName.Split('/').Last());
-                            TestBundle(App.AssetManager.GetBundleId(bEntry));
+                            if (depenTest)
+                                TestBundleDepdenecyAccuracy(App.AssetManager.GetBundleId(bEntry));
+                            else
+                                TestBundleParentAccuracy(App.AssetManager.GetBundleId(bEntry));
                         }
                         task.Update(progress: ((double)idx++ / (double)length) * 100.0d);
-                        if (idx > 150)
-                            break;
+                        //if (idx > 150)
+                        //    break;
                     }
                     AbmDependenciesCache.UpdateCache();
                     App.Logger.Log("Checked all bpbs");
                 });
             }
 
-            public void SublevelBundleTest()
+            public void SublevelTest(bool depenTest = true)
             {
                 FrostyTaskWindow.Show("Testing bundles", "", (task) =>
                 {
@@ -55,7 +58,10 @@ namespace AutoBundleManager.Logic
                         if (new List<string> { "S2/Levels/CloudCity_01" }.Any(ender => bEntry.Name.Contains(ender)))
                         {
                             task.Update(bEntry.DisplayName.Split('/').Last());
-                            TestBundle(App.AssetManager.GetBundleId(bEntry));
+                            if (depenTest)
+                                TestBundleDepdenecyAccuracy(App.AssetManager.GetBundleId(bEntry));
+                            else
+                                TestBundleParentAccuracy(App.AssetManager.GetBundleId(bEntry));
                         }
                         task.Update(progress: ((double)idx++ / (double)length) * 100.0d);
                     }
@@ -64,7 +70,8 @@ namespace AutoBundleManager.Logic
                 });
             }
 
-            void TestBundle(int bunId)
+            //Testing if the bundle manager can find all assets within existing bundles
+            void TestBundleDepdenecyAccuracy(int bunId)
             {
                 Dictionary<AssetEntry, bool> loadedAssets = new Dictionary<AssetEntry, bool>();
                 App.AssetManager.EnumerateEbx().Where(refEntry => refEntry.IsInBundle(bunId)).ToList().ForEach(refEntry => loadedAssets.Add(refEntry, false));
@@ -118,7 +125,7 @@ namespace AutoBundleManager.Logic
                 //foreach (ChunkAssetEntry refEntry in loadedAssets.Where(refEntry => refEntry.Key.GetType() == typeof(ChunkAssetEntry)).Select(refEntry => (ChunkAssetEntry)refEntry.Key).ToList())
                 //    App.Logger.Log((loadedAssets[refEntry] ? "Detected:\t" : "Missing:\t") + refEntry.Name);
 
-                string filePath = $@"{App.FileSystem.CacheName}/AutoBundleManager/TestLogs/{App.AssetManager.GetBundleEntry(bunId).DisplayName.Split('/').Last()}.csv";
+                string filePath = $@"{App.FileSystem.CacheName}/AutoBundleManager/DependencyTestLogs/{App.AssetManager.GetBundleEntry(bunId).DisplayName.Split('/').Last()}.csv";
 
                 //loadedAssets[App.AssetManager.GetEbxEntry(bunBlueprintName)] = false;
                 if (loadedAssets.Where(pair => pair.Value).Count() == loadedAssets.Count())
@@ -142,6 +149,76 @@ namespace AutoBundleManager.Logic
                     // Write Chunk section
                     foreach (ChunkAssetEntry refEntry in loadedAssets.Where(refEntry => refEntry.Key.GetType() == typeof(ChunkAssetEntry)).Select(refEntry => (ChunkAssetEntry)refEntry.Key))
                         writer.WriteLine($"{refEntry.AssetType}, {refEntry.Type}, {refEntry.Name}, {loadedAssets[refEntry]}");
+                }
+
+                // Logging that CSV file has been written
+                App.Logger.Log("CSV file has been written to: " + filePath);
+            }
+
+            //Testing if the bundle heap knows all parents which existing bundles have.
+            void TestBundleParentAccuracy(int bunId)
+            {
+                List<int> bunParIds = AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds().ToList();
+
+                List<AssetEntry> readAssets = new List<AssetEntry>();
+                List<AssetEntry> inaccurateAssets = new List<AssetEntry>();
+                void DetectDependencies(EbxAssetEntry parEntry)
+                {
+                    DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
+                    if (readAssets.Contains(parEntry))
+                        return;
+                    readAssets.Add(parEntry);
+
+                    if (parEntry.IsInBundle(bunId))
+                    {
+                        foreach (EbxAssetEntry ebxEntry in dependencies.ebxRefs)
+                            DetectDependencies(ebxEntry);
+                        foreach (ResAssetEntry resEntry in dependencies.resRefs)
+                            if (!parEntry.IsInBundleHeap(bunId, bunParIds))
+                            {
+                                inaccurateAssets.Add(resEntry);
+                                readAssets.Add(resEntry);
+                            }
+                        foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs)
+                            if (chkEntry.Bundles.Count() != 0 && !chkEntry.IsInBundleHeap(bunId, bunParIds))
+                            {
+                                inaccurateAssets.Add(chkEntry);
+                                readAssets.Add(chkEntry);
+                            }
+                    }
+                    else if (!parEntry.IsInBundleHeap(bunId, bunParIds))
+                        inaccurateAssets.Add(parEntry);
+                }
+
+                string bunName = App.AssetManager.GetBundleEntry(bunId).Name;
+                string bunBlueprintName = bunName.Replace("win32/", "");
+
+                DetectDependencies(App.AssetManager.GetEbxEntry(bunBlueprintName));
+
+
+                string filePath = $@"{App.FileSystem.CacheName}/AutoBundleManager/ParentTestLogs/{App.AssetManager.GetBundleEntry(bunId).DisplayName.Split('/').Last()}.csv";
+
+                if (inaccurateAssets.Count() == 0)
+                    return;
+                App.Logger.Log($"{bunName}:\t{inaccurateAssets.Count()} inaccurate asset parents detected.");
+
+                // Create a StreamWriter to write to the CSV file
+                if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                using (StreamWriter writer = new StreamWriter(filePath))
+                {
+                    writer.WriteLine("AssetType, Type, AssetName, Bundles");
+                    // Write Ebx section
+                    foreach (EbxAssetEntry refEntry in inaccurateAssets.Where(refEntry => refEntry.GetType() == typeof(EbxAssetEntry)).Select(refEntry => (EbxAssetEntry)refEntry))
+                        writer.WriteLine($"{refEntry.AssetType}, {refEntry.Type}, {refEntry.Name}, {string.Join("$", refEntry.EnumerateBundles().Select(refBunId => App.AssetManager.GetBundleEntry(refBunId).Name))})");
+
+                    // Write Res section
+                    foreach (ResAssetEntry refEntry in inaccurateAssets.Where(refEntry => refEntry.GetType() == typeof(ResAssetEntry)).Select(refEntry => (ResAssetEntry)refEntry))
+                        writer.WriteLine($"{refEntry.AssetType}, {refEntry.Type}, {refEntry.Name}, {string.Join("$", refEntry.EnumerateBundles().Select(refBunId => App.AssetManager.GetBundleEntry(refBunId).Name))})");
+
+                    // Write Chunk section
+                    foreach (ChunkAssetEntry refEntry in inaccurateAssets.Where(refEntry => refEntry.GetType() == typeof(ChunkAssetEntry)).Select(refEntry => (ChunkAssetEntry)refEntry))
+                        writer.WriteLine($"{refEntry.AssetType}, {refEntry.Type}, {refEntry.Name}, {string.Join("$", refEntry.EnumerateBundles().Select(refBunId => App.AssetManager.GetBundleEntry(refBunId).Name))})");
                 }
 
                 // Logging that CSV file has been written
