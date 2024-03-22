@@ -80,6 +80,7 @@
 	  <EmbeddedResource Include="Data\Swbf2_RootInstances.cache" />
 	  <EmbeddedResource Include="Data\Swbf2_BundleHeap.cache" />
 	  <EmbeddedResource Include="Data\Swbf2_NetworkRegistryObjects.cache" />
+	  <EmbeddedResource Include="Data\Swbf2_H32FirstMip.cache" />
   </ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="xcopy /Y &quot;$(TargetPath)&quot; &quot;E:\C#\Frosty\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\Plugins&quot;" />

@@ -87,6 +87,23 @@ namespace AutoBundleManager.Logic
             });
 
         }
+        public class AutoBundleManagerTestChunkFirstMipH32MenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "TEST: H32 FirstMip Report";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                AbmTestFunctions bunTest = new AbmTestFunctions();
+                bunTest.TestFirstMipH32Accuracy();
+            });
+
+        }
         public class AbmCacheBundleHierarchyMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;

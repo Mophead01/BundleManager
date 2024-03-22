@@ -1,6 +1,7 @@
 ﻿using AutoBundleManagerPlugin;
 using Frosty.Core;
 using Frosty.Core.Windows;
+using FrostySdk;
 using FrostySdk.IO;
 using FrostySdk.Managers;
 using System;
@@ -8,9 +9,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using System.Xml.Linq;
 
 namespace AutoBundleManager.Logic
 {
@@ -223,6 +226,100 @@ namespace AutoBundleManager.Logic
 
                 // Logging that CSV file has been written
                 App.Logger.Log("CSV file has been written to: " + filePath);
+            }
+
+            //Testing the bundle manager's ability to correctly assign H32/FirstMip to assets by comparing them to a cache generated from 1.0.7. NOTE: Kyber mod loader is supposed to be doing Firstmip/H32 automatically so this is only necessary for Frosty most likely
+            public void TestFirstMipH32Accuracy()
+            {
+                Dictionary<ChunkAssetEntry, (int, int)> chunkH32Cached = new Dictionary<ChunkAssetEntry, (int, int)>();
+                using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_H32FirstMip.cache")))
+                {
+                    int chunkCount = reader.ReadInt();
+                    for (int i = 0; i < chunkCount; i++)
+                        chunkH32Cached.Add(App.AssetManager.GetChunkEntry(reader.ReadGuid()), (reader.ReadInt(), reader.ReadInt()));
+                }
+                Dictionary<uint, EbxAssetEntry> h32HashesEbx = new Dictionary<uint, EbxAssetEntry>();
+                foreach (EbxAssetEntry refEntry in App.AssetManager.EnumerateEbx())
+                {
+                    uint hash = (uint)Utils.HashString(refEntry.Name, true);
+                    if (h32HashesEbx.ContainsKey(hash))
+                        App.Logger.LogWarning($"Duplicate Ebx Hash:\t{hash}\tAsset 1:\t{h32HashesEbx[hash].Name}\tAsset 2:\t{refEntry.Name}");
+                    else
+                        h32HashesEbx.Add(hash, refEntry);
+                }
+
+                Dictionary<uint, ResAssetEntry> h32HashesRes = new Dictionary<uint, ResAssetEntry>();
+                foreach (ResAssetEntry resEntry in App.AssetManager.EnumerateRes())
+                {
+                    uint hash = (uint)Utils.HashString(resEntry.Name, true);
+                    if (h32HashesRes.ContainsKey(hash))
+                        App.Logger.LogWarning($"Duplicate Res Hash:\t{hash}\tAsset 1:\t{h32HashesRes[hash].Name}\tAsset 2:\t{resEntry.Name}");
+                    else
+                        h32HashesRes.Add(hash, resEntry);
+                }
+
+                Dictionary<string, int> ebxH32Types = new Dictionary<string, int>();
+                Dictionary<string, int> resH32Types = new Dictionary<string, int>();
+                Dictionary<string, int> ebxFirstMipTypes = new Dictionary<string, int>();
+                Dictionary<string, int> resFirstMipTypes = new Dictionary<string, int>();
+                void TryAddDictionary(Dictionary<string, int> dict, string key)
+                {
+                    if (dict.ContainsKey(key))
+                        dict[key]++;
+                    else
+                        dict[key] = 1;
+                }
+                foreach (ChunkAssetEntry chkEntry in chunkH32Cached.Keys)
+                {
+                    uint h32Hash = (uint)chunkH32Cached[chkEntry].Item2;
+                    int firstMip = chunkH32Cached[chkEntry].Item1;
+                    if (h32Hash == 0)
+                        continue;
+                    if (!h32HashesEbx.ContainsKey(h32Hash) && !h32HashesRes.ContainsKey(h32Hash))
+                        App.Logger.LogError($"Could not find h32 asset for: {chkEntry.Name}\t({h32Hash})");
+                    if (h32HashesEbx.ContainsKey(h32Hash))
+                    {
+                        //if (h32HashesEbx[h32Hash].Type == "AntStateAsset")
+                        //{
+                        //    App.Logger.Log(h32HashesRes.ContainsKey(h32Hash).ToString());
+                        //    App.Logger.Log(h32HashesEbx[h32Hash].Name);
+                        //    App.Logger.Log((App.AssetManager.GetResEntry(h32HashesEbx[h32Hash].Name) != null).ToString());
+                        //}
+                        TryAddDictionary(ebxH32Types, h32HashesEbx[h32Hash].Type);
+                        if (firstMip != -1)
+                            TryAddDictionary(ebxFirstMipTypes, h32HashesEbx[h32Hash].Type);
+                    }
+                    if (h32HashesRes.ContainsKey(h32Hash))
+                    {
+                        //string test = h32HashesEbx[h32Hash].Name;
+                        TryAddDictionary(resH32Types, h32HashesRes[h32Hash].Type);
+                        if (firstMip != -1)
+                            TryAddDictionary(resFirstMipTypes, h32HashesRes[h32Hash].Type);
+                    }
+                }
+
+                string printToLog = "\r\nEbx H32 Types:\r\n";
+                foreach (KeyValuePair<string, int> pair in ebxH32Types)
+                    printToLog += $"{pair.Key} ({pair.Value})\n";
+
+                printToLog += "\r\nRes H32 Types:\r\n";
+                foreach (KeyValuePair<string, int> pair in resH32Types)
+                    printToLog += $"{pair.Key} ({pair.Value})\n";
+
+                printToLog += "\r\nEbx FirstMip Types:\r\n";
+                foreach (KeyValuePair<string, int> pair in ebxFirstMipTypes)
+                    printToLog += $"{pair.Key} ({pair.Value})\n";
+
+                printToLog += "\r\nRes FirstMip Types:\r\n";
+                foreach (KeyValuePair<string, int> pair in resFirstMipTypes)
+                    printToLog += $"{pair.Key} ({pair.Value})\n";
+
+                //printToLog += "\r\nRes AssetBanks:\r\n";
+                //foreach (string assetBank in h32HashesRes.Values.Where(str => str.EndsWith("_antstate")))
+                //    printToLog += $"{assetBank} ({App.AssetManager.GetResEntry(assetBank).Type})\t{h32HashesRes.ContainsKey((uint)Utils.HashString(assetBank))}\n";
+
+
+                App.Logger.Log(printToLog);
             }
         }
     }
