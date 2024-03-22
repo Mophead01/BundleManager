@@ -73,14 +73,36 @@ namespace AutoBundleManagerPlugin
         [Description("Cached list of bundles and their parents")]
         [IsReadOnly]
         public List<BundleHeapEntryViewer> CachedBpbs { get; set; }
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Network Registry Reference Types Cache")]
+        [Description("List of object types which network registries are set to reference for in modified/duplicated assets")]
+        [IsReadOnly]
+        public List<CString> CachedNetworkRegistryReferenceTypes { get; set; }
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Network Registry Reference Types Cache")]
+        [Description("List of object types which network registries are set to reference for in modified/duplicated assets")]
+        [IsReadOnly]
+        public List<NetworkRegistryReferencesViewer> CachedNetworkRegistryReferenceObjects { get; set; }
+        //NetworkRegistryReferencesViewer
         public AutoBundleManagerOptionsGrid()
         {
+            //RootInstances = new List<RootInstancesViewer>();
+            //CachedEbx = new List<AutoBundleManagerDependenciesCacheInterpruter>();
+            //CachedRes = new List<AutoBundleManagerDependenciesCacheInterpruter>();
+            //CachedBpbs = new List<BundleHeapEntryViewer>();
+            //CachedSublevels = new List<BundleHeapEntryViewer>();
+            //CachedSharedBundles = new List<BundleHeapEntryViewer>();
+
             RootInstances = AbmRootInstanceCache.ebxRootInstanceGuidList.Select(pair => new RootInstancesViewer((pair.Key, pair.Value))).ToList();
             CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedBpbs = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.BlueprintBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
             CachedSharedBundles = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SharedBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
             CachedSublevels = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SubLevel).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedNetworkRegistryReferenceTypes = AbmNetworkRegistryCache.NetworkRegistryTypes.OrderBy(str => str).Select(type => new CString(type)).ToList();
+            CachedNetworkRegistryReferenceObjects = AbmNetworkRegistryCache.NetworkRegistryReferences.Select(pair => new NetworkRegistryReferencesViewer(pair)).ToList();
         }
     }
     public class AutoBundleManagerOptionsViewer : FrostyBaseEditor

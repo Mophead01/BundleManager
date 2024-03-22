@@ -75,6 +75,15 @@ namespace AutoBundleManagerPlugin
             return hashSet;
         }
 
+        public static List<Guid> ReadListGuids(this NativeReader reader)
+        {
+            int count = reader.ReadInt();
+            List<Guid> hashSet = new List<Guid>();
+            for (int i = 0; i < count; i++)
+                hashSet.Add(reader.ReadGuid());
+            return hashSet;
+        }
+
         public static HashSet<Guid> ReadHashSetGuids(this NativeReader reader)
         {
             int count = reader.ReadInt();
