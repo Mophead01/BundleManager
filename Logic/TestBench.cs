@@ -160,8 +160,8 @@ namespace AutoBundleManager.Logic
             {
                 List<int> bunParIds = AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds().ToList();
 
-                List<AssetEntry> readAssets = new List<AssetEntry>();
-                List<AssetEntry> inaccurateAssets = new List<AssetEntry>();
+                HashSet<AssetEntry> readAssets = new HashSet<AssetEntry>();
+                HashSet<AssetEntry> inaccurateAssets = new HashSet<AssetEntry>();
                 void DetectDependencies(EbxAssetEntry parEntry)
                 {
                     DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);

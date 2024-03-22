@@ -157,6 +157,10 @@ namespace AutoBundleManagerPlugin
                         }
                     }
                     break;
+                case "PropertyConnection":
+                case "EventConnection":
+                case "LinkConnection":
+                    return;
             }
 
             PropertyInfo[] Properties = obj.GetType().GetProperties(PropertyBindingFlags);
@@ -170,12 +174,25 @@ namespace AutoBundleManagerPlugin
             }
 
             //Remove cases where the bundle manager is being overly cautious
+            void RemoveIfFound(string assetName)
+            {
+                if (refNames.Contains(assetName))
+                    refNames.Remove(assetName);
+            }
             switch (obj.GetType().Name) 
             {
                 case "VisualUnlockRootAsset":
-                    string vurName = ((dynamic)obj).Name;
-                    if (refNames.Contains(vurName))
-                        refNames.Remove(vurName);
+                    RemoveIfFound(((dynamic)obj).Name);
+                    break;
+                case "BlueprintBundleReference":
+                    //TODO - Parent BPBs
+                    RemoveIfFound(((dynamic)obj).Name);
+                    foreach(dynamic parent in ((dynamic)obj).Parents)
+                        if(parent.Name != "")
+                            RemoveIfFound(parent.Name);
+                    break;
+                case "SubWorldReferenceObjectData":
+                    RemoveIfFound(((dynamic)obj).BundleName);
                     break;
             }
 
@@ -350,7 +367,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 8;
+        private static int cacheVersion = 11;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencyRaw> dependencies = new Dictionary<Sha1, DependencyRaw>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);

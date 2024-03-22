@@ -250,6 +250,15 @@ namespace AutoBundleManagerPlugin
         }
         public static void EnumerateSublevelBundles(FrostyTaskWindow task)
         {
+            List<string> constParents = new List<string>()
+            {
+                "win32/gameplay/wrgameconfiguration",
+                "win32/default_settings",
+                "win32/loadingscreens_bundle",
+                "win32/ui/static"
+            };
+            foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles().Where(bEntry => bEntry.Name.StartsWith("win32/ui/resources/fonts/wsuiimfontconfiguration_languageformat")))
+                constParents.Add(bEntry.Name);
             object forLock = new object();
             HashSet<int> descriptionBunIds = new HashSet<int>();
             task.ParallelForeach("Caching Sublevel Bundle Inheritence", App.AssetManager.EnumerateEbx(type: "LevelDescriptionAsset"), (descEntry, index) =>
@@ -258,7 +267,7 @@ namespace AutoBundleManagerPlugin
                     return;
                 dynamic refRoot = App.AssetManager.GetEbx(descEntry, true).RootObject;
                 string levelName = BunNameCorrection(refRoot.LevelName);
-                List<int> parents = new List<int>();
+                List<int> parents = constParents.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList();
                 foreach (dynamic obj in refRoot.Bundles)
                 {
                     string BunName = "win32/" + BunNameCorrection(obj.Name);
@@ -279,7 +288,8 @@ namespace AutoBundleManagerPlugin
                             descriptionBunIds.Add(bunId);
                         }
                     }
-                    parents.Add(bunId);
+                    if (!parents.Contains(bunId))
+                        parents.Add(bunId);
                 }
                 SearchLevelData(levelName, parents, forLock);
             });

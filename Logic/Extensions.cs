@@ -54,6 +54,15 @@ namespace AutoBundleManagerPlugin
             foreach (int value in intList)
                 writer.Write(value);
         }
+        public static void Write(this NativeWriter writer, Dictionary<Guid, List<Guid>> guidDict)
+        {
+            writer.Write(guidDict.Count);
+            foreach (KeyValuePair<Guid, List<Guid>> pair in guidDict)
+            {
+                writer.Write(pair.Key);
+                writer.Write(pair.Value);
+            }
+        }
         #endregion
         #region Readers
 

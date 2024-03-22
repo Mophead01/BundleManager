@@ -104,7 +104,7 @@ namespace AutoBundleManagerPlugin
 
             bundlesSelectedTextBlock.Text = "Bundle Manager Detected Dependencies Of " + entry.Filename;
 
-            dependenciesListTextBox.Text = "";
+            dependenciesListTextBox.Text = $"FileGuid:{entry.Guid}";
 
             if (sbEbxPr.Length > 0)
                 dependenciesListTextBox.Text += "\r\nEbx References:\r\n" + sbEbxPr.ToString();
@@ -119,7 +119,7 @@ namespace AutoBundleManagerPlugin
             //    dependenciesListTextBox.Text += "\r\nText References:\r\n" + sbTextRef.ToString();
 
             if (dependenciesListTextBox.Text.Length > 0)
-                dependenciesListTextBox.Text = string.Join("\n", dependenciesListTextBox.Text.Split('\n').Skip(1));
+                dependenciesListTextBox.Text = string.Join("\n", dependenciesListTextBox.Text.Split('\n'));
         }
     }
     public class DependencyViewer : TabExtension

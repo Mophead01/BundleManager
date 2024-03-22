@@ -33,6 +33,7 @@ using System.Windows;
 
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmOptionsMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheBundleHierarchyMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheNetworkRegistriesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestBlueprintBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestBlueprintBundlesParentsMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestSublevelsMenuExtension))]

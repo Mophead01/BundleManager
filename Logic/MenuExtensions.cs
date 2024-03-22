@@ -110,6 +110,25 @@ namespace AutoBundleManager.Logic
             });
 
         }
+        public class AbmCacheNetworkRegistriesMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Cache: Network Registries";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Caching Network Registries", "", (task) =>
+                {
+                    AbmNetworkRegistryCache.WriteToCache(task);
+                });
+            });
+
+        }
         public class AbmOptionsMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;
