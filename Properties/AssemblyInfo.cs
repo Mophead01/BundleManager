@@ -31,7 +31,7 @@ using System.Windows;
 [assembly: RegisterTabExtension(typeof(DependencyViewer))]
 
 
-[assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestBlueprintBundlesMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(AbmTestModule.AutoBundleManagerTestSublevelsMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(AbmTestModule.AbmCacheBundleHierarchyMenuExtension))]
-[assembly: RegisterMenuExtension(typeof(AbmTestModule.AbmOptionsMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestBlueprintBundlesMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestSublevelsMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheBundleHierarchyMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmOptionsMenuExtension))]
