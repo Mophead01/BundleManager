@@ -86,7 +86,7 @@ namespace AutoBundleManagerPlugin
                 sbEbxPr.AppendLine($"\tEbx Ref: {ebxEntry.Name}");
             foreach (ResAssetEntry resEntry in dependencies.resRefs)
                 sbResId.AppendLine($"\tRes Ref: {resEntry.Name}");
-            foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs)
+            foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs.Select(chkPair => chkPair.Key))
                 sbChunk.AppendLine($"\tChk Ref: {chkEntry.Name}");
             //StringBuilder sbTextRef = new StringBuilder();
 

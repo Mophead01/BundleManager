@@ -48,6 +48,15 @@ namespace AutoBundleManagerPlugin
             foreach (Guid guid in guidSet)
                 writer.Write(guid);
         }
+        public static void Write(this NativeWriter writer, Dictionary<Guid, int> guidDict)
+        {
+            writer.Write(guidDict.Count);
+            foreach (KeyValuePair<Guid,int> pair in guidDict)
+            {
+                writer.Write(pair.Key);
+                writer.Write(pair.Value);
+            }
+        }
         public static void Write(this NativeWriter writer, List<int> intList)
         {
             writer.Write(intList.Count);
@@ -91,6 +100,15 @@ namespace AutoBundleManagerPlugin
             for (int i = 0; i < count; i++)
                 hashSet.Add(reader.ReadGuid());
             return hashSet;
+        }
+
+        public static Dictionary<Guid, int> ReadGuidDictionary(this NativeReader reader)
+        {
+            int count = reader.ReadInt();
+            Dictionary<Guid, int> guidDict = new Dictionary<Guid, int>();
+            for (int i = 0; i < count; i++)
+                guidDict[reader.ReadGuid()] = reader.ReadInt();
+            return guidDict;
         }
 
         public static HashSet<ulong> ReadHashSetULongs(this NativeReader reader)

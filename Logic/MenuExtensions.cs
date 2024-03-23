@@ -99,8 +99,10 @@ namespace AutoBundleManager.Logic
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                AbmTestFunctions bunTest = new AbmTestFunctions();
-                bunTest.TestFirstMipH32Accuracy();
+                AbmTestFunctions bunTest = new AbmTestFunctions(); FrostyTaskWindow.Show("", "", (task) =>
+                {
+                    bunTest.TestFirstMipH32Accuracy(task);
+                });
             });
 
         }

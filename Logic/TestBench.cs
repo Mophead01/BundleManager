@@ -95,7 +95,7 @@ namespace AutoBundleManager.Logic
                     foreach (ResAssetEntry resEntry in dependencies.resRefs)
                         if (loadedAssets.ContainsKey(resEntry))
                             loadedAssets[resEntry] = true;
-                    foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs)
+                    foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs.Select(chkPair => chkPair.Key))
                         if (loadedAssets.ContainsKey(chkEntry))
                             loadedAssets[chkEntry] = true;
                 }
@@ -182,7 +182,7 @@ namespace AutoBundleManager.Logic
                                 inaccurateAssets.Add(resEntry);
                                 readAssets.Add(resEntry);
                             }
-                        foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs)
+                        foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs.Select(chkPair => chkPair.Key))
                             if (chkEntry.Bundles.Count() != 0 && !chkEntry.IsInBundleHeap(bunId, bunParIds))
                             {
                                 inaccurateAssets.Add(chkEntry);
@@ -229,8 +229,9 @@ namespace AutoBundleManager.Logic
             }
 
             //Testing the bundle manager's ability to correctly assign H32/FirstMip to assets by comparing them to a cache generated from 1.0.7. NOTE: Kyber mod loader is supposed to be doing Firstmip/H32 automatically so this is only necessary for Frosty most likely
-            public void TestFirstMipH32Accuracy()
+            public void TestFirstMipH32Accuracy(FrostyTaskWindow task)
             {
+                task.Update("Discovering basic info");
                 Dictionary<ChunkAssetEntry, (int, int)> chunkH32Cached = new Dictionary<ChunkAssetEntry, (int, int)>();
                 using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_H32FirstMip.cache")))
                 {
@@ -241,6 +242,8 @@ namespace AutoBundleManager.Logic
                 Dictionary<uint, EbxAssetEntry> h32HashesEbx = new Dictionary<uint, EbxAssetEntry>();
                 foreach (EbxAssetEntry refEntry in App.AssetManager.EnumerateEbx())
                 {
+                    if (refEntry.Name.EndsWith("/MeshVariationDb_Win32"))
+                        continue;
                     uint hash = (uint)Utils.HashString(refEntry.Name, true);
                     if (h32HashesEbx.ContainsKey(hash))
                         App.Logger.LogWarning($"Duplicate Ebx Hash:\t{hash}\tAsset 1:\t{h32HashesEbx[hash].Name}\tAsset 2:\t{refEntry.Name}");
@@ -269,6 +272,8 @@ namespace AutoBundleManager.Logic
                     else
                         dict[key] = 1;
                 }
+                Dictionary<ChunkAssetEntry, EbxAssetEntry> chkToEbx = new Dictionary<ChunkAssetEntry, EbxAssetEntry>();
+                List<(ChunkAssetEntry, string)> missingChunkEbx = new List<(ChunkAssetEntry, string)>();
                 foreach (ChunkAssetEntry chkEntry in chunkH32Cached.Keys)
                 {
                     uint h32Hash = (uint)chunkH32Cached[chkEntry].Item2;
@@ -279,6 +284,7 @@ namespace AutoBundleManager.Logic
                         App.Logger.LogError($"Could not find h32 asset for: {chkEntry.Name}\t({h32Hash})");
                     if (h32HashesEbx.ContainsKey(h32Hash))
                     {
+                        chkToEbx.Add(chkEntry, h32HashesEbx[h32Hash]);
                         //if (h32HashesEbx[h32Hash].Type == "AntStateAsset")
                         //{
                         //    App.Logger.Log(h32HashesRes.ContainsKey(h32Hash).ToString());
@@ -289,6 +295,8 @@ namespace AutoBundleManager.Logic
                         if (firstMip != -1)
                             TryAddDictionary(ebxFirstMipTypes, h32HashesEbx[h32Hash].Type);
                     }
+                    else
+                        missingChunkEbx.Add((chkEntry, h32HashesRes[h32Hash].Type));
                     if (h32HashesRes.ContainsKey(h32Hash))
                     {
                         //string test = h32HashesEbx[h32Hash].Name;
@@ -314,12 +322,89 @@ namespace AutoBundleManager.Logic
                 foreach (KeyValuePair<string, int> pair in resFirstMipTypes)
                     printToLog += $"{pair.Key} ({pair.Value})\n";
 
+                //printToLog += "\r\nMissing chunk ebx:\r\n";
+                //foreach ((ChunkAssetEntry, string) chkPairs in missingChunkEbx)
+                //    printToLog += $"{chkPairs.Item1.Name}\t{chkPairs.Item2}\n";
+
                 //printToLog += "\r\nRes AssetBanks:\r\n";
                 //foreach (string assetBank in h32HashesRes.Values.Where(str => str.EndsWith("_antstate")))
                 //    printToLog += $"{assetBank} ({App.AssetManager.GetResEntry(assetBank).Type})\t{h32HashesRes.ContainsKey((uint)Utils.HashString(assetBank))}\n";
-
-
                 App.Logger.Log(printToLog);
+
+
+
+
+
+
+
+
+                using (StreamWriter writer = new StreamWriter($@"{App.FileSystem.CacheName}/AutoBundleManager/DependencyTestLogs/ChunkH32Detection.csv"))
+                {
+                    writer.WriteLine("EbxName,EbxType,ChunkId");
+
+                    task.Update("Checking chunk detection");
+                    int count = chkToEbx.Count;
+                    int idx = 0;
+                    foreach (KeyValuePair<ChunkAssetEntry, EbxAssetEntry> chkEbxPair in chkToEbx)
+                    {
+                        ChunkAssetEntry targChunk = chkEbxPair.Key;
+                        EbxAssetEntry targEbx = chkEbxPair.Value;
+                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
+                        if (!dependencies.chkRefs.ContainsKey(targChunk))
+                            writer.WriteLine($"{targEbx.Name},{targEbx.Type},{targChunk.Name}");
+                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                    }
+                }
+                AbmDependenciesCache.UpdateCache();
+
+                using (StreamWriter writer = new StreamWriter($@"{App.FileSystem.CacheName}/AutoBundleManager/DependencyTestLogs/ChunkFirstMipDetection.csv"))
+                {
+                    writer.WriteLine("EbxName,EbxType,ChunkId,CacheFirstMip,RealFirstMip");
+
+                    task.Update("Checking chunk detection");
+                    int count = chunkH32Cached.Where(pair => pair.Value.Item1 != -1).ToList().Count;
+                    int idx = 0;
+                    foreach (KeyValuePair<ChunkAssetEntry, (int, int)> chkEbxPair in chunkH32Cached.Where(pair => pair.Value.Item1 != -1).ToList())
+                    {
+                        ChunkAssetEntry targChunk = chkEbxPair.Key;
+                        EbxAssetEntry targEbx = chkToEbx[chkEbxPair.Key];
+                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
+                        if (dependencies.chkRefs.ContainsKey(targChunk))
+                        {
+                            if (dependencies.chkRefs[targChunk] != chkEbxPair.Value.Item1)
+                                writer.WriteLine($"{targEbx.Name},{targEbx.Type},{targChunk.Name},{dependencies.chkRefs[targChunk]},{chkEbxPair.Value.Item1}");
+                        }
+                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                    }
+                }
+                HashSet<ChunkAssetEntry> undiscoveredChunks = new HashSet<ChunkAssetEntry>(App.AssetManager.EnumerateChunks().ToList());
+
+                HashSet<string> ebxTypesWithChunksThatWerentDiscovered = new HashSet<string>();
+                using (StreamWriter writer = new StreamWriter($@"{App.FileSystem.CacheName}/AutoBundleManager/DependencyTestLogs/ChunkGameWideDetection.csv"))
+                {
+                    writer.WriteLine("ChunkId,Bundles");
+
+                    task.Update("Checking chunk detection");
+                    int count = App.AssetManager.EnumerateEbx().ToList().Count;
+                    int idx = 0;
+                    foreach (EbxAssetEntry parEntry in App.AssetManager.EnumerateEbx())
+                    {
+                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                        //if (!ebxH32Types.ContainsKey(parEntry.Type))
+                        //    continue;
+                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
+                        if (!ebxH32Types.ContainsKey(parEntry.Type) && dependencies.chkRefs.Count() > 0)
+                            ebxTypesWithChunksThatWerentDiscovered.Add(parEntry.Type);
+                        foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs.Keys)
+                            if (undiscoveredChunks.Contains(chkEntry))
+                                undiscoveredChunks.Remove(chkEntry);
+                    }
+                    foreach(ChunkAssetEntry undiscoveredChunk in undiscoveredChunks)
+                        writer.WriteLine($"{undiscoveredChunk.Name},{string.Join("$", undiscoveredChunk.Bundles.Select(bunId => App.AssetManager.GetBundleEntry(bunId).Name))}");
+                }
+                AbmDependenciesCache.UpdateCache();
+                foreach (string ebxType in ebxTypesWithChunksThatWerentDiscovered)
+                    App.Logger.Log(ebxType);
             }
         }
     }
