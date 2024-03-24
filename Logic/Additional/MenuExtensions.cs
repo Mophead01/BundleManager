@@ -154,6 +154,25 @@ namespace AutoBundleManagerPlugin
             });
 
         }
+        public class AbmCacheMeshVariationDatabasesMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Cache: Mesh Variation Databases";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Caching MVDBs", "", (task) =>
+                {
+                    AbmMeshVariationDatabasePrecache.WriteToCache(task);
+                });
+            });
+
+        }
         public class AbmOptionsMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;

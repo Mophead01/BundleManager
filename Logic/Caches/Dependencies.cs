@@ -1,5 +1,4 @@
 ﻿using AtlasTexturePlugin;
-using AutoBundleManager.Logic.Additional;
 using Frosty.Core;
 using Frosty.Core.Controls;
 using FrostySdk;
