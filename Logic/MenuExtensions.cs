@@ -1,19 +1,25 @@
 ﻿using AutoBundleManagerPlugin;
 using Frosty.Core;
+using Frosty.Core.Controls;
 using Frosty.Core.Windows;
+using FrostySdk.Attributes;
+using FrostySdk.Ebx;
 using FrostySdk.IO;
 using FrostySdk.Managers;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using static AutoBundleManager.Logic.AbmTestModule;
 
-namespace AutoBundleManager.Logic
+namespace AutoBundleManagerPlugin
 {
     public class AbmMenuExtensions
     {
@@ -164,5 +170,156 @@ namespace AutoBundleManager.Logic
             });
 
         }
+    }
+    public class AutoBundleManagerOptionsGrid
+    {
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Complete MeshVariationDBs")]
+        [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
+        public bool CompleteMeshVariations { get { return AutoBundleManagerOptions.CompleteMeshVariations; } set { AutoBundleManagerOptions.CompleteMeshVariations = value; } }
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Forced Bundle Edits")]
+        [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
+        public List<ForcedBundleEditsViewer> ForcedBundleEdits { 
+            get 
+            { 
+                return AutoBundleManagerOptions.ForcedBundleEdits.Select(pair => new ForcedBundleEditsViewer(pair.Key, pair.Value)).ToList(); 
+            }
+            set
+            {
+            }
+        }
+
+#if false
+
+        //
+        //  Read Only Caches
+        //
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Ebx Root Instance Cache")]
+        [Description("Cached list of ebx root instance Guids")]
+        [IsReadOnly]
+        public List<RootInstancesViewer> RootInstances { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Ebx Dependancy Cache")]
+        [Description("Cached list of ebx, chunk and resource depdencies from an ebx asset")]
+        [IsReadOnly]
+        public List<AutoBundleManagerDependenciesCacheInterpruter> CachedEbx { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Res Dependancy Cache")]
+        [Description("Cached list of ebx, chunk and resource depdencies from a res asset")]
+        [IsReadOnly]
+        public List<AutoBundleManagerDependenciesCacheInterpruter> CachedRes { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Shared Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedSharedBundles { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Sublevel Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedSublevels { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Blueprint Bundle Heap Cache")]
+        [Description("Cached list of bundles and their parents")]
+        [IsReadOnly]
+        public List<BundleHeapEntryViewer> CachedBpbs { get; set; }
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Network Registry Reference Types Cache")]
+        [Description("List of object types which network registries are set to reference for in modified/duplicated assets")]
+        [IsReadOnly]
+        public List<CString> CachedNetworkRegistryReferenceTypes { get; set; }
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Network Registry Reference Types Cache")]
+        [Description("List of object types which network registries are set to reference for in modified/duplicated assets")]
+        [IsReadOnly]
+        public List<NetworkRegistryReferencesViewer> CachedNetworkRegistryReferenceObjects { get; set; }
+        //NetworkRegistryReferencesViewer
+
+#endif
+        public AutoBundleManagerOptionsGrid()
+        {
+#if false
+            //RootInstances = new List<RootInstancesViewer>();
+            //CachedEbx = new List<AutoBundleManagerDependenciesCacheInterpruter>();
+            //CachedRes = new List<AutoBundleManagerDependenciesCacheInterpruter>();
+            //CachedBpbs = new List<BundleHeapEntryViewer>();
+            //CachedSublevels = new List<BundleHeapEntryViewer>();
+            //CachedSharedBundles = new List<BundleHeapEntryViewer>();
+
+            RootInstances = AbmRootInstanceCache.ebxRootInstanceGuidList.Select(pair => new RootInstancesViewer((pair.Key, pair.Value))).ToList();
+            CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
+            CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
+            CachedBpbs = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.BlueprintBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedSharedBundles = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SharedBundle).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedSublevels = AbmBundleHeap.Bundles.Where(bunPair => App.AssetManager.GetBundleEntry(bunPair.Key).Type == BundleType.SubLevel).ToList().Select(bunPair => new BundleHeapEntryViewer(bunPair.Value)).ToList();
+            CachedNetworkRegistryReferenceTypes = AbmNetworkRegistryCache.NetworkRegistryTypes.OrderBy(str => str).Select(type => new CString(type)).ToList();
+            CachedNetworkRegistryReferenceObjects = AbmNetworkRegistryCache.NetworkRegistryReferences.Select(pair => new NetworkRegistryReferencesViewer(pair)).ToList();
+#endif
+        }
+        
+    }
+    public class AutoBundleManagerOptionsViewer : FrostyBaseEditor
+    {
+        private const string PART_AbmOptionsViewer = "PART_AbmOptionsViewer";
+        private FrostyPropertyGrid AbmOptionsPropertyGrid;
+        static AutoBundleManagerOptionsViewer()
+        {
+            DefaultStyleKeyProperty.OverrideMetadata(typeof(AutoBundleManagerOptionsViewer), new FrameworkPropertyMetadata(typeof(AutoBundleManagerOptionsViewer)));
+        }
+        public AutoBundleManagerOptionsViewer()
+        {
+
+        }
+        public override void OnApplyTemplate()
+        {
+            base.OnApplyTemplate();
+            AbmOptionsPropertyGrid = GetTemplateChild(PART_AbmOptionsViewer) as FrostyPropertyGrid;
+            Loaded += AutoBundleMangaerOptionsViewer_Loaded;
+            AbmOptionsPropertyGrid.OnModified += AbmOptionsPropertyGrid_OnModified;
+        }
+
+        private void AbmOptionsPropertyGrid_OnModified(object sender, ItemModifiedEventArgs e)
+        {
+            dynamic topLevel = (dynamic)e.Item;
+            while (topLevel.Parent != null)
+                topLevel = topLevel.Parent;
+
+            foreach(FrostyPropertyGridItemData child in ((ObservableCollection<FrostyPropertyGridItemData>)topLevel.Children).Where(child => child.DisplayName == "Forced Bundle Edits"))
+            {
+                Dictionary<string, List<string>> returnDict = new Dictionary<string, List<string>>();
+                foreach (ForcedBundleEditsViewer forcedEdits in ((dynamic)child).Value)
+                {
+                    if (!returnDict.ContainsKey(forcedEdits.assetName))
+                        returnDict.Add(forcedEdits.assetName, forcedEdits.bundleNames.Select(name => name.ToString()).ToList());
+                }
+                AutoBundleManagerOptions.ForcedBundleEdits = returnDict;
+            }
+        }
+
+        private void AutoBundleMangaerOptionsViewer_Loaded(object sender, RoutedEventArgs e)
+        {
+            AutoBundleManagerOptionsGrid optionsGrid = new AutoBundleManagerOptionsGrid();
+            //optionsGrid.DependenciesCache = new List<AutoBundleManagerDependenciesCacheInterpruter>() { new AutoBundleManagerDependenciesCacheInterpruter(new KeyValuePair<Sha1, DependencyData>(new Sha1(), null)) };
+            AbmOptionsPropertyGrid.SetClass(optionsGrid);
+        }
+
     }
 }
