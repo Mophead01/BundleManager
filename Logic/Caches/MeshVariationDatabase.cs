@@ -130,15 +130,15 @@ namespace AutoBundleManagerPlugin
     {
         public PointerRef Mesh;
         public List<AbmMeshVariationDatabaseMaterial> Materials = new List<AbmMeshVariationDatabaseMaterial>();
-        public UInt32 VariationAssetNameHash;
+        public uint VariationAssetNameHash;
 
-        public AbmMeshVariationDatabaseEntry(NativeReader reader, PointerRef mesh)
+        public AbmMeshVariationDatabaseEntry(NativeReader reader)
         {
-            Mesh = mesh;
+            Mesh = new PointerRef(new EbxImportReference() {FileGuid = reader.ReadGuid(), ClassGuid = reader.ReadGuid() });
             VariationAssetNameHash = reader.ReadUInt();
             int matCount = reader.ReadInt();
             for (int i = 0; i < matCount; i++)
-                Materials.Add(new AbmMeshVariationDatabaseMaterial(reader, mesh, VariationAssetNameHash));
+                Materials.Add(new AbmMeshVariationDatabaseMaterial(reader, Mesh, VariationAssetNameHash));
         }
         public AbmMeshVariationDatabaseEntry(dynamic mvdbEntry) //Constructor from base game MeshVariationDatabaseEntry 
         {
@@ -235,17 +235,56 @@ namespace AutoBundleManagerPlugin
 
             }
         }
+        public void WriteBinary(NativeWriter writer)
+        {
+            writer.Write(Mesh.External.FileGuid);
+            writer.Write(Mesh.External.ClassGuid);
+            writer.Write(VariationAssetNameHash);
+            writer.Write(Materials.Count);
+            foreach (AbmMeshVariationDatabaseMaterial mvMat in Materials)
+            {
+                writer.Write(mvMat.Material.External.ClassGuid);
+                if (VariationAssetNameHash != 0)
+                {
+                    writer.Write(mvMat.MaterialVariation.External.FileGuid);
+                    writer.Write(mvMat.MaterialVariation.External.ClassGuid);
+                }
+                writer.Write(mvMat.SurfaceShaderId);
+                writer.Write(mvMat.SurfaceShaderGuid);
+                writer.Write(mvMat.MaterialId);
+                writer.Write(mvMat.TextureParameters.Count);
+                foreach (AbmTextureShaderParameter texParam in mvMat.TextureParameters)
+                {
+                    writer.WriteNullTerminatedString(texParam.ParameterName);
+                    writer.Write(texParam.Value.External.FileGuid);
+                    writer.Write(texParam.Value.External.ClassGuid);
+                }
+            }
+        }
     }
 
     public static class AbmMeshVariationDatabasePrecache
     {
         public static Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry> MeshVariationDatabase;
+
+        static AbmMeshVariationDatabasePrecache()
+        {
+            MeshVariationDatabase = new Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry>();
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_MeshVariationDatabasePrecache.cache")))
+            {
+                int mvdbEntryCount = reader.ReadInt();
+                for (int i = 0; i < mvdbEntryCount; i++)
+                {
+                    AbmMeshVariationDatabaseEntry mvEntry = new AbmMeshVariationDatabaseEntry(reader);
+                    MeshVariationDatabase.Add((mvEntry.Mesh.External.FileGuid, mvEntry.VariationAssetNameHash), mvEntry);
+                }
+            }
+        }
         public static void WriteToCache(FrostyTaskWindow task)
         {
-            FileInfo fi = new FileInfo($"{App.FileSystem.CacheName}/AutoBundleManager/MeshVariationDatabasePrecache.cache");
+            FileInfo fi = new FileInfo($"{App.FileSystem.CacheName}/AutoBundleManager/Swbf2_MeshVariationDatabasePrecache.cache");
             if (!Directory.Exists(fi.DirectoryName))
                 Directory.CreateDirectory(fi.DirectoryName);
-
 
             MeshVariationDatabase = new Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry>();
             dynamic forLock = new object();
@@ -267,38 +306,11 @@ namespace AutoBundleManagerPlugin
                 }
             });
 
-
             using (NativeWriter writer = new NativeWriter(new FileStream(fi.FullName, FileMode.Create)))
             {
-                foreach(KeyValuePair<(Guid, uint), AbmMeshVariationDatabaseEntry> pair in MeshVariationDatabase)
-                {
-                    Guid assetGuid = pair.Key.Item1;
-                    uint varHash = pair.Key.Item2;
-
-                    AbmMeshVariationDatabaseEntry mvdbObj = pair.Value;
-                    writer.Write(assetGuid);
-                    writer.Write(varHash);
-                    writer.Write(mvdbObj.Materials.Count);
-                    foreach (AbmMeshVariationDatabaseMaterial mvMat in mvdbObj.Materials)
-                    {
-                        writer.Write(mvMat.Material.External.ClassGuid);
-                        if (varHash != 0)
-                        {
-                            writer.Write(mvMat.MaterialVariation.External.FileGuid);
-                            writer.Write(mvMat.MaterialVariation.External.ClassGuid);
-                        }
-                        writer.Write(mvMat.SurfaceShaderId);
-                        writer.Write(mvMat.SurfaceShaderGuid);
-                        writer.Write(mvMat.MaterialId);
-                        writer.Write(mvMat.TextureParameters.Count);
-                        foreach (AbmTextureShaderParameter texParam in mvMat.TextureParameters)
-                        {
-                            writer.WriteNullTerminatedString(texParam.ParameterName);
-                            writer.Write(texParam.Value.External.FileGuid);
-                            writer.Write(texParam.Value.External.ClassGuid);
-                        }
-                    }
-                }
+                writer.Write(MeshVariationDatabase.Count());
+                foreach (KeyValuePair<(Guid, uint), AbmMeshVariationDatabaseEntry> pair in MeshVariationDatabase.OrderBy(pair => pair.Key.Item1))
+                    pair.Value.WriteBinary(writer);
             }
         }
     }

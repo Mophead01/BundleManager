@@ -211,6 +211,12 @@ namespace AutoBundleManagerPlugin
             {
             }
         }
+        //[Category("ReadOnlyCaches")]
+        //[EbxFieldMeta(EbxFieldType.Array)]
+        //[DisplayName("MeshVariationDb Cache")]
+        //[Description("Cached list of MeshVariationDatabases")]
+        //[IsReadOnly]
+        //public List<object> CachedMeshVariationDatabase { get; set; }
 
         [Category("ReadOnlyCaches")]
         [EbxFieldMeta(EbxFieldType.Array)]
@@ -292,6 +298,7 @@ namespace AutoBundleManagerPlugin
         {
             CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes && pair.Value.networkRegistryRefGuids.Count() > 0).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
             CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
+            //CachedMeshVariationDatabase = AbmMeshVariationDatabasePrecache.MeshVariationDatabase.Select(pair => pair.Value.WriteToGameEntry()).ToList();
 #if false
             //RootInstances = new List<RootInstancesViewer>();
             //CachedEbx = new List<AutoBundleManagerDependenciesCacheInterpruter>();
