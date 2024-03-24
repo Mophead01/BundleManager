@@ -110,7 +110,8 @@ namespace AutoBundleManagerPlugin
         public HashSet<Guid> ebxPointerGuids = new HashSet<Guid>();
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public HashSet<Guid> chunkGuids = new HashSet<Guid>();
-       
+        public HashSet<Guid> networkRegistryReferenceGuids = new HashSet<Guid>();
+
         public EbxDependencyDetector(EbxAssetEntry parEntry, EbxAsset parAsset)
         {
             this.parEntry = parEntry;
@@ -135,7 +136,23 @@ namespace AutoBundleManagerPlugin
                     refNames.Add(parEntry.Name.ToLower() + "/rvmdatabase_dx11rvmdatabase");
                     refNames.Add(parEntry.Name.ToLower() + "/rvmdatabase_dx11nvrvmdatabase");
                     break;
+            }
 
+            if (!parEntry.HasModifiedData)
+            {
+                if (AbmNetworkRegistryCache.NetworkRegistryReferences.ContainsKey(parEntry.Guid))
+                {
+                    foreach (Guid networkRegistryReferenceGuid in AbmNetworkRegistryCache.NetworkRegistryReferences[parEntry.Guid])
+                        networkRegistryReferenceGuids.Add(networkRegistryReferenceGuid);
+                }
+            }
+            else
+            {
+                foreach (dynamic obj in parAsset.ExportedObjects)
+                {
+                    if (AbmNetworkRegistryCache.NetworkRegistryTypes.Contains(obj.GetType().Name))
+                        networkRegistryReferenceGuids.Add(((dynamic)obj).GetInstanceGuid().ExportedGuid);
+                }
             }
         }
 
@@ -267,23 +284,30 @@ namespace AutoBundleManagerPlugin
     public class DependencyRaw
     {
         public string srcName;
+        public Guid srcGuid;
         public bool isRes;
         public HashSet<string> refNames = new HashSet<string>();
         public HashSet<Guid> ebxGuids = new HashSet<Guid>();
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public Dictionary<Guid, int> chunkGuids = new Dictionary<Guid, int>();
-        public DependencyRaw(string srcName, bool isRes, HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, Dictionary<Guid, int> chunkGuids)
+        public HashSet<Guid> networkRegistryRefGuids = new HashSet<Guid>();
+        public DependencyRaw(string srcName, Guid srcGuid, bool isRes, HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, Dictionary<Guid, int> chunkGuids, HashSet<Guid> networkRegistryRefGuids)
         {
             this.srcName = srcName;
+            this.srcGuid = srcGuid;
             this.isRes = isRes;
             this.refNames = refNames;
             this.ebxGuids = ebxGuids;
             this.resRids = resRids;
             this.chunkGuids = chunkGuids;
+            this.networkRegistryRefGuids = networkRegistryRefGuids;
         }
 
         public DependencyRaw(DependencyRaw copyFrom)
         {
+            srcName = copyFrom.srcName;
+            srcGuid = copyFrom.srcGuid;
+            isRes = copyFrom.isRes;
             foreach (string refName in copyFrom.refNames)
                 refNames.Add(refName);
             foreach (Guid refGuid in copyFrom.ebxGuids)
@@ -293,18 +317,23 @@ namespace AutoBundleManagerPlugin
             foreach (KeyValuePair<Guid, int> guidPair in copyFrom.chunkGuids)
                 if (!chunkGuids.ContainsKey(guidPair.Key))
                     chunkGuids.Add(guidPair.Key, guidPair.Value);
+            foreach (Guid refGuid in copyFrom.networkRegistryRefGuids)
+                networkRegistryRefGuids.Add(refGuid);
         }
     }
     public class DependencyData
     {
         public string srcName;
+        public Guid srcGuid;
         public bool isRes;
         public HashSet<EbxAssetEntry> ebxRefs = new HashSet<EbxAssetEntry>();
         public HashSet<ResAssetEntry> resRefs = new HashSet<ResAssetEntry>();
         public Dictionary<ChunkAssetEntry, int> chkRefs = new Dictionary<ChunkAssetEntry, int>();
+        public HashSet<Guid> networkRegistryRefGuids = new HashSet<Guid>();
         public DependencyData(DependencyRaw rawDependency)
         {
             srcName = rawDependency.srcName;
+            srcGuid = rawDependency.srcGuid;
             isRes = rawDependency.isRes;
             foreach (Guid ebxGuid in rawDependency.ebxGuids)
             {
@@ -334,6 +363,8 @@ namespace AutoBundleManagerPlugin
                 if (resEntry != null && !(isRes && resEntry.Name == srcName))
                     resRefs.Add(resEntry);
             }
+            foreach (Guid networkRegistryReferenceGuid in rawDependency.networkRegistryRefGuids)
+                networkRegistryRefGuids.Add(networkRegistryReferenceGuid);
         }
     }
     [EbxClassMeta(EbxFieldType.Struct)]
@@ -343,6 +374,10 @@ namespace AutoBundleManagerPlugin
         [Description("Asset Name")]
         [IsReadOnly]
         public string Name { get; set; }
+        [DisplayName("Guid")]
+        [Description("Asset Guid")]
+        [IsReadOnly]
+        public Guid FileGuid { get; set; }
         [DisplayName("Sha1")]
         [Description("Asset signature")]
         [IsReadOnly]
@@ -362,6 +397,11 @@ namespace AutoBundleManagerPlugin
         [Description("Chunk assets referenced by this asset")]
         [IsReadOnly]
         public List<Guid> ChunkAssets { get; set; }
+
+        [DisplayName("Network Registry Reference Guids")]
+        [Description("Guids to reference an ebx by in network registries")]
+        [IsReadOnly]
+        public List<Guid> NetworkRegistryReferenceGuids { get; set; }
         public AutoBundleManagerDependenciesCacheInterpruter()
         {
 
@@ -370,16 +410,18 @@ namespace AutoBundleManagerPlugin
         public AutoBundleManagerDependenciesCacheInterpruter(KeyValuePair<Sha1, DependencyData> pair)
         {
             Name = pair.Value.srcName;
+            FileGuid = pair.Value.srcGuid;
             Sha1 = pair.Key;
             EbxAssets = pair.Value.ebxRefs.Select(ebxRef => new CString(ebxRef.Name)).ToList();
             ResAssets = pair.Value.resRefs.Select(resRef => new CString(resRef.Name)).ToList();
             ChunkAssets = pair.Value.chkRefs.Select(chkRef => chkRef.Key.Id).ToList();
+            NetworkRegistryReferenceGuids = pair.Value.networkRegistryRefGuids.ToList();
         }
     }
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 12;
+        private static int cacheVersion = 14;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencyRaw> dependencies = new Dictionary<Sha1, DependencyRaw>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
@@ -398,13 +440,14 @@ namespace AutoBundleManagerPlugin
                 if (parEntry.GetType() == typeof(EbxAssetEntry))
                 {
                     EbxDependencyDetector ebxDependencyDetector = new EbxDependencyDetector((EbxAssetEntry)parEntry, App.AssetManager.GetEbx((EbxAssetEntry)parEntry));
-                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1)));
+                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, ((EbxAssetEntry)parEntry).Guid, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, 
+                        ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1), ebxDependencyDetector.networkRegistryReferenceGuids));
                 }
                 else if (parEntry.GetType() == typeof(ResAssetEntry))
                 {
                     ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)((ResAssetEntry)parEntry).ResType]);
                     extension.ExtractData(((ResAssetEntry)parEntry).ResRid);
-                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids) { });
+                    dependencies.Add(sha1, new DependencyRaw(parEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>()) { });
                 }
                 else
                     throw new Exception("Unknown AssetEntry Type");
@@ -480,11 +523,13 @@ namespace AutoBundleManagerPlugin
                 {
                     writer.Write(pair.Key);
                     writer.WriteNullTerminatedString(pair.Value.srcName);
+                    writer.Write(pair.Value.srcGuid);
                     writer.Write(pair.Value.isRes);
                     writer.Write(pair.Value.refNames);
                     writer.Write(pair.Value.ebxGuids);
                     writer.Write(pair.Value.resRids);
                     writer.Write(pair.Value.chunkGuids);
+                    writer.Write(pair.Value.networkRegistryRefGuids);
                 }
             }
             cacheNeedsUpdating = false;
@@ -501,7 +546,7 @@ namespace AutoBundleManagerPlugin
                     return;
                 int dependencyCount = reader.ReadInt();
                 for (int i = 0; i < dependencyCount; i++)
-                    dependencies.Add(reader.ReadSha1(), new DependencyRaw(reader.ReadNullTerminatedString(), reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), reader.ReadHashSetULongs(), reader.ReadGuidDictionary()));
+                    dependencies.Add(reader.ReadSha1(), new DependencyRaw(reader.ReadNullTerminatedString(), reader.ReadGuid() ,reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), reader.ReadHashSetULongs(), reader.ReadGuidDictionary(), reader.ReadHashSetGuids()));
             }
         }
     }

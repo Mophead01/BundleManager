@@ -192,6 +192,20 @@ namespace AutoBundleManagerPlugin
             }
         }
 
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Ebx Dependancy Cache")]
+        [Description("Cached list of ebx, chunk and resource depdencies from an ebx asset")]
+        [IsReadOnly]
+        public List<AutoBundleManagerDependenciesCacheInterpruter> CachedEbx { get; set; }
+
+        [Category("ReadOnlyCaches")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Res Dependancy Cache")]
+        [Description("Cached list of ebx, chunk and resource depdencies from a res asset")]
+        [IsReadOnly]
+        public List<AutoBundleManagerDependenciesCacheInterpruter> CachedRes { get; set; }
+
 #if false
 
         //
@@ -256,6 +270,8 @@ namespace AutoBundleManagerPlugin
 #endif
         public AutoBundleManagerOptionsGrid()
         {
+            CachedEbx = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => !pair.Value.isRes && pair.Value.networkRegistryRefGuids.Count() > 0).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
+            CachedRes = AbmDependenciesCache.GetAllCachedDependencies().Where(pair => pair.Value.isRes).Select(pair => new AutoBundleManagerDependenciesCacheInterpruter(pair)).ToList();
 #if false
             //RootInstances = new List<RootInstancesViewer>();
             //CachedEbx = new List<AutoBundleManagerDependenciesCacheInterpruter>();
