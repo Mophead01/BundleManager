@@ -18,9 +18,11 @@ namespace AutoBundleManagerPlugin
 {
     public static class AutoBundleManagerOptions
     {
-        public static bool CompleteMeshVariations { get { return Config.Get<bool>("ABM_CompleteMeshVariationDbs", true, ConfigScope.Game); } set { Config.Add("ABM_CompleteMeshVariationDbs", value, ConfigScope.Game); } }
-        public static Dictionary<string, List<string>> ForcedBundleEdits { 
-            get {
+        public static bool CompleteMeshVariations { get { return Config.Get("ABM_CompleteMeshVariationDbs", true, ConfigScope.Game); } set { Config.Add("ABM_CompleteMeshVariationDbs", value, ConfigScope.Game); } }
+        public static Dictionary<string, List<string>> ForcedBundleEdits
+        {
+            get
+            {
                 string strList = Config.Get<string>("ABM_ForcedBundleEdits", null, ConfigScope.Game);
                 Dictionary<string, List<string>> returnList = new Dictionary<string, List<string>>();
                 if (strList == null)
@@ -30,7 +32,7 @@ namespace AutoBundleManagerPlugin
                         { "animations/antanimations/levels/frontend/frontend_win32_antstate", new List<string>()},
                         { "animations/antanimations/levels/frontend/collection_win32_antstate", new List<string>()},
                     };
-                    foreach(EbxAssetEntry levEntry in App.AssetManager.EnumerateEbx(type: "LevelData"))
+                    foreach (EbxAssetEntry levEntry in App.AssetManager.EnumerateEbx(type: "LevelData"))
                     {
                         if (!levEntry.IsAdded && levEntry.Name != "Levels/Frontend/Frontend")
                             returnList.Keys.ToList().ForEach(key => returnList[key].Add(App.AssetManager.GetBundleEntry(levEntry.Bundles[0]).Name));
@@ -48,7 +50,7 @@ namespace AutoBundleManagerPlugin
             }
             set
             {
-                Config.Add("ABM_ForcedBundleEdits", string.Join("$", value.ToList().Select(pair => $"{pair.Key}:{string.Join("£", pair.Value)}")), ConfigScope.Game);                
+                Config.Add("ABM_ForcedBundleEdits", string.Join("$", value.ToList().Select(pair => $"{pair.Key}:{string.Join("£", pair.Value)}")), ConfigScope.Game);
             }
         }
     }
@@ -69,7 +71,7 @@ namespace AutoBundleManagerPlugin
         }
         public ForcedBundleEditsViewer()
         {
-            this.bundleNames = new List<CString>();
+            bundleNames = new List<CString>();
         }
     }
 }

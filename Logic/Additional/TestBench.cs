@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Xml.Linq;
 
-namespace AutoBundleManager.Logic
+namespace AutoBundleManagerPlugin
 {
     public class AbmTestModule
     {
@@ -23,7 +23,7 @@ namespace AutoBundleManager.Logic
         {
             public AbmTestFunctions()
             {
-                
+
             }
             public void BlueprintBundleTest(bool depenTest = true)
             {
@@ -41,7 +41,7 @@ namespace AutoBundleManager.Logic
                             else
                                 TestBundleParentAccuracy(App.AssetManager.GetBundleId(bEntry));
                         }
-                        task.Update(progress: ((double)idx++ / (double)length) * 100.0d);
+                        task.Update(progress: idx++ / (double)length * 100.0d);
                         //if (idx > 150)
                         //    break;
                     }
@@ -66,7 +66,7 @@ namespace AutoBundleManager.Logic
                             else
                                 TestBundleParentAccuracy(App.AssetManager.GetBundleId(bEntry));
                         }
-                        task.Update(progress: ((double)idx++ / (double)length) * 100.0d);
+                        task.Update(progress: idx++ / (double)length * 100.0d);
                     }
                     AbmDependenciesCache.UpdateCache();
                     App.Logger.Log("Checked all sublevel bundles");
@@ -83,13 +83,13 @@ namespace AutoBundleManager.Logic
 
                 void DetectDependencies(EbxAssetEntry parEntry)
                 {
-                    if ((parEntry.Type != "ShaderGraph" && !parEntry.IsInBundle(bunId)) || (loadedAssets.ContainsKey(parEntry) && loadedAssets[parEntry]))
+                    if (parEntry.Type != "ShaderGraph" && !parEntry.IsInBundle(bunId) || loadedAssets.ContainsKey(parEntry) && loadedAssets[parEntry])
                         return;
                     if (loadedAssets.ContainsKey(parEntry))
                         loadedAssets[parEntry] = true;
 
                     DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
-                    foreach(EbxAssetEntry ebxEntry in dependencies.ebxRefs)
+                    foreach (EbxAssetEntry ebxEntry in dependencies.ebxRefs)
                         if (ebxEntry != parEntry)
                             DetectDependencies(ebxEntry);
                     foreach (ResAssetEntry resEntry in dependencies.resRefs)
@@ -133,7 +133,7 @@ namespace AutoBundleManager.Logic
                 //loadedAssets[App.AssetManager.GetEbxEntry(bunBlueprintName)] = false;
                 if (loadedAssets.Where(pair => pair.Value).Count() == loadedAssets.Count())
                     return;
-                App.Logger.Log($"{bunName}:\tDetected {loadedAssets.Where(pair => pair.Value).Count()}/{loadedAssets.Count()} assets ({(float)((float)loadedAssets.Where(pair => pair.Value).Count() / (float)loadedAssets.Count()) * 100}%)");
+                App.Logger.Log($"{bunName}:\tDetected {loadedAssets.Where(pair => pair.Value).Count()}/{loadedAssets.Count()} assets ({(float)(loadedAssets.Where(pair => pair.Value).Count() / (float)loadedAssets.Count()) * 100}%)");
 
                 // Create a StreamWriter to write to the CSV file
                 if (!Directory.Exists(Path.GetDirectoryName(filePath)))
@@ -352,7 +352,7 @@ namespace AutoBundleManager.Logic
                         DependencyData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
                         if (!dependencies.chkRefs.ContainsKey(targChunk))
                             writer.WriteLine($"{targEbx.Name},{targEbx.Type},{targChunk.Name}");
-                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                        task.Update(progress: idx++ / (float)count * 100.0f);
                     }
                 }
                 AbmDependenciesCache.UpdateCache();
@@ -374,7 +374,7 @@ namespace AutoBundleManager.Logic
                             if (dependencies.chkRefs[targChunk] != chkEbxPair.Value.Item1)
                                 writer.WriteLine($"{targEbx.Name},{targEbx.Type},{targChunk.Name},{dependencies.chkRefs[targChunk]},{chkEbxPair.Value.Item1}");
                         }
-                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                        task.Update(progress: idx++ / (float)count * 100.0f);
                     }
                 }
                 HashSet<ChunkAssetEntry> undiscoveredChunks = new HashSet<ChunkAssetEntry>(App.AssetManager.EnumerateChunks().ToList());
@@ -389,7 +389,7 @@ namespace AutoBundleManager.Logic
                     int idx = 0;
                     foreach (EbxAssetEntry parEntry in App.AssetManager.EnumerateEbx())
                     {
-                        task.Update(progress: (((float)idx++ / (float)count) * 100.0f));
+                        task.Update(progress: idx++ / (float)count * 100.0f);
                         //if (!ebxH32Types.ContainsKey(parEntry.Type))
                         //    continue;
                         DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
@@ -399,7 +399,7 @@ namespace AutoBundleManager.Logic
                             if (undiscoveredChunks.Contains(chkEntry))
                                 undiscoveredChunks.Remove(chkEntry);
                     }
-                    foreach(ChunkAssetEntry undiscoveredChunk in undiscoveredChunks)
+                    foreach (ChunkAssetEntry undiscoveredChunk in undiscoveredChunks)
                         writer.WriteLine($"{undiscoveredChunk.Name},{string.Join("$", undiscoveredChunk.Bundles.Select(bunId => App.AssetManager.GetBundleEntry(bunId).Name))}");
                 }
                 AbmDependenciesCache.UpdateCache();

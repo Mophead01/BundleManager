@@ -14,6 +14,7 @@ using Frosty.Hash;
 using System.Reflection;
 using FrostySdk.Ebx;
 using FrostySdk.Attributes;
+using AutoBundleManager.Logic.Additional;
 
 namespace AutoBundleManagerPlugin
 {

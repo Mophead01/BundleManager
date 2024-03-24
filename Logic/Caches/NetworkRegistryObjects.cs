@@ -1,4 +1,4 @@
-﻿using AutoBundleManagerPlugin;
+﻿using AutoBundleManager.Logic.Additional;
 using Frosty.Core;
 using Frosty.Core.Windows;
 using FrostySdk;

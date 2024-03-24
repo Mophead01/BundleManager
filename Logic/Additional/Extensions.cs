@@ -51,7 +51,7 @@ namespace AutoBundleManagerPlugin
         public static void Write(this NativeWriter writer, Dictionary<Guid, int> guidDict)
         {
             writer.Write(guidDict.Count);
-            foreach (KeyValuePair<Guid,int> pair in guidDict)
+            foreach (KeyValuePair<Guid, int> pair in guidDict)
             {
                 writer.Write(pair.Key);
                 writer.Write(pair.Value);
@@ -148,11 +148,11 @@ namespace AutoBundleManagerPlugin
                 }
             });
         }
-        public static bool IsInBundleHeap(this AssetEntry assetEntry, int bunId, List<int> parentIds) 
+        public static bool IsInBundleHeap(this AssetEntry assetEntry, int bunId, List<int> parentIds)
         {
             if (assetEntry.IsInBundle(bunId))
                 return true;
-            foreach(int parId in parentIds)
+            foreach (int parId in parentIds)
                 if (assetEntry.IsInBundle(parId))
                     return true;
             return false;

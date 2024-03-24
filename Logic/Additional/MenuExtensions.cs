@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using static AutoBundleManager.Logic.AbmTestModule;
+using static AutoBundleManagerPlugin.AbmTestModule;
 
 namespace AutoBundleManagerPlugin
 {
@@ -182,10 +182,11 @@ namespace AutoBundleManagerPlugin
         [EbxFieldMeta(EbxFieldType.Array)]
         [DisplayName("Forced Bundle Edits")]
         [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
-        public List<ForcedBundleEditsViewer> ForcedBundleEdits { 
-            get 
-            { 
-                return AutoBundleManagerOptions.ForcedBundleEdits.Select(pair => new ForcedBundleEditsViewer(pair.Key, pair.Value)).ToList(); 
+        public List<ForcedBundleEditsViewer> ForcedBundleEdits
+        {
+            get
+            {
+                return AutoBundleManagerOptions.ForcedBundleEdits.Select(pair => new ForcedBundleEditsViewer(pair.Key, pair.Value)).ToList();
             }
             set
             {
@@ -290,7 +291,7 @@ namespace AutoBundleManagerPlugin
             CachedNetworkRegistryReferenceObjects = AbmNetworkRegistryCache.NetworkRegistryReferences.Select(pair => new NetworkRegistryReferencesViewer(pair)).ToList();
 #endif
         }
-        
+
     }
     public class AutoBundleManagerOptionsViewer : FrostyBaseEditor
     {
@@ -314,11 +315,11 @@ namespace AutoBundleManagerPlugin
 
         private void AbmOptionsPropertyGrid_OnModified(object sender, ItemModifiedEventArgs e)
         {
-            dynamic topLevel = (dynamic)e.Item;
+            dynamic topLevel = e.Item;
             while (topLevel.Parent != null)
                 topLevel = topLevel.Parent;
 
-            foreach(FrostyPropertyGridItemData child in ((ObservableCollection<FrostyPropertyGridItemData>)topLevel.Children).Where(child => child.DisplayName == "Forced Bundle Edits"))
+            foreach (FrostyPropertyGridItemData child in ((ObservableCollection<FrostyPropertyGridItemData>)topLevel.Children).Where(child => child.DisplayName == "Forced Bundle Edits"))
             {
                 Dictionary<string, List<string>> returnDict = new Dictionary<string, List<string>>();
                 foreach (ForcedBundleEditsViewer forcedEdits in ((dynamic)child).Value)
