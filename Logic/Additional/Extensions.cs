@@ -1,4 +1,5 @@
 ﻿using Frosty.Core.Windows;
+using FrostySdk;
 using FrostySdk.IO;
 using FrostySdk.Managers;
 using System;
@@ -6,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 
 namespace AutoBundleManagerPlugin
 {
@@ -47,6 +49,15 @@ namespace AutoBundleManagerPlugin
             writer.Write(guidSet.Count);
             foreach (Guid guid in guidSet)
                 writer.Write(guid);
+        }
+        public static void Write(this NativeWriter writer, HashSet<(Guid, Guid)> guidSet)
+        {
+            writer.Write(guidSet.Count);
+            foreach ((Guid, Guid) guidPair in guidSet)
+            {
+                writer.Write(guidPair.Item1);
+                writer.Write(guidPair.Item2);
+            }
         }
         public static void Write(this NativeWriter writer, Dictionary<Guid, int> guidDict)
         {
@@ -99,6 +110,15 @@ namespace AutoBundleManagerPlugin
             HashSet<Guid> hashSet = new HashSet<Guid>();
             for (int i = 0; i < count; i++)
                 hashSet.Add(reader.ReadGuid());
+            return hashSet;
+        }
+
+        public static HashSet<(Guid, Guid)> ReadHashSetGuidPairs(this NativeReader reader)
+        {
+            int count = reader.ReadInt();
+            HashSet<(Guid, Guid)> hashSet = new HashSet<(Guid, Guid)>();
+            for (int i = 0; i < count; i++)
+                hashSet.Add((reader.ReadGuid(), reader.ReadGuid()));
             return hashSet;
         }
 
@@ -156,6 +176,13 @@ namespace AutoBundleManagerPlugin
                 if (assetEntry.IsInBundle(parId))
                     return true;
             return false;
+        }
+
+        public static Sha1 GetSha1(this AssetEntry parEntry)
+        {
+            if (parEntry.HasModifiedData)
+                return parEntry.ModifiedEntry.Sha1;
+            return parEntry.Sha1;
         }
     }
 }

@@ -76,7 +76,7 @@ namespace AutoBundleManagerPlugin
                 return;
             }
             //EbxDependencyDetector parDependecies = new EbxDependencyDetector(entry, App.AssetManager.GetEbx(entry));
-            DependencyData dependencies = AbmDependenciesCache.GetDependencies(entry);
+            DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(entry);
 
             StringBuilder sbEbxPr = new StringBuilder();
             StringBuilder sbResId = new StringBuilder();

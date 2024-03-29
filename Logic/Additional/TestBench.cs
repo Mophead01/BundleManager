@@ -88,7 +88,7 @@ namespace AutoBundleManagerPlugin
                     if (loadedAssets.ContainsKey(parEntry))
                         loadedAssets[parEntry] = true;
 
-                    DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
+                    DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
                     foreach (EbxAssetEntry ebxEntry in dependencies.ebxRefs)
                         if (ebxEntry != parEntry)
                             DetectDependencies(ebxEntry);
@@ -167,7 +167,7 @@ namespace AutoBundleManagerPlugin
                 HashSet<AssetEntry> inaccurateAssets = new HashSet<AssetEntry>();
                 void DetectDependencies(EbxAssetEntry parEntry)
                 {
-                    DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
+                    DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
                     if (readAssets.Contains(parEntry))
                         return;
                     readAssets.Add(parEntry);
@@ -349,7 +349,7 @@ namespace AutoBundleManagerPlugin
                     {
                         ChunkAssetEntry targChunk = chkEbxPair.Key;
                         EbxAssetEntry targEbx = chkEbxPair.Value;
-                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
+                        DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
                         if (!dependencies.chkRefs.ContainsKey(targChunk))
                             writer.WriteLine($"{targEbx.Name},{targEbx.Type},{targChunk.Name}");
                         task.Update(progress: idx++ / (float)count * 100.0f);
@@ -368,7 +368,7 @@ namespace AutoBundleManagerPlugin
                     {
                         ChunkAssetEntry targChunk = chkEbxPair.Key;
                         EbxAssetEntry targEbx = chkToEbx[chkEbxPair.Key];
-                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
+                        DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(targEbx);
                         if (dependencies.chkRefs.ContainsKey(targChunk))
                         {
                             if (dependencies.chkRefs[targChunk] != chkEbxPair.Value.Item1)
@@ -392,7 +392,7 @@ namespace AutoBundleManagerPlugin
                         task.Update(progress: idx++ / (float)count * 100.0f);
                         //if (!ebxH32Types.ContainsKey(parEntry.Type))
                         //    continue;
-                        DependencyData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
+                        DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
                         if (!ebxH32Types.ContainsKey(parEntry.Type) && dependencies.chkRefs.Count() > 0)
                             ebxTypesWithChunksThatWerentDiscovered.Add(parEntry.Type);
                         foreach (ChunkAssetEntry chkEntry in dependencies.chkRefs.Keys)

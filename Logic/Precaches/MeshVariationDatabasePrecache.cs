@@ -132,6 +132,7 @@ namespace AutoBundleManagerPlugin
         public List<AbmMeshVariationDatabaseMaterial> Materials = new List<AbmMeshVariationDatabaseMaterial>();
         public uint VariationAssetNameHash;
 
+        //Constructor from raw binary
         public AbmMeshVariationDatabaseEntry(NativeReader reader)
         {
             Mesh = new PointerRef(new EbxImportReference() {FileGuid = reader.ReadGuid(), ClassGuid = reader.ReadGuid() });
@@ -140,7 +141,9 @@ namespace AutoBundleManagerPlugin
             for (int i = 0; i < matCount; i++)
                 Materials.Add(new AbmMeshVariationDatabaseMaterial(reader, Mesh, VariationAssetNameHash));
         }
-        public AbmMeshVariationDatabaseEntry(dynamic mvdbEntry) //Constructor from base game MeshVariationDatabaseEntry 
+
+        //Constructor from base game MeshVariationDatabaseEntry 
+        public AbmMeshVariationDatabaseEntry(dynamic mvdbEntry)
         {
 
             Mesh = mvdbEntry.Mesh;
@@ -149,6 +152,7 @@ namespace AutoBundleManagerPlugin
                 Materials.Add(new AbmMeshVariationDatabaseMaterial(material));
         }
 
+        //Constructor from modified mesh asset
         public AbmMeshVariationDatabaseEntry(EbxAssetEntry parEntry, EbxAsset parAsset, dynamic parRoot)
         {
             Mesh = new PointerRef(new EbxImportReference() { FileGuid = parEntry.Guid, ClassGuid = parAsset.RootInstanceGuid });
@@ -163,6 +167,7 @@ namespace AutoBundleManagerPlugin
 
         }
 
+        //Constructor from modified mesh and variation asset
         public AbmMeshVariationDatabaseEntry(EbxAssetEntry meshEntry, EbxAsset meshAsset, dynamic meshRoot, EbxAssetEntry varEntry, dynamic varRoot, Dictionary<Guid, dynamic> meshSectionToVariationSection)
         {
             Mesh = new PointerRef(new EbxImportReference() { FileGuid = meshEntry.Guid, ClassGuid = meshAsset.RootInstanceGuid });
