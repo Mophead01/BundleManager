@@ -83,6 +83,16 @@ namespace AutoBundleManagerPlugin
                 writer.Write(pair.Value);
             }
         }
+        public static void Write(this NativeWriter writer, Dictionary<string, HashSet<string>> strDict)
+        {
+            writer.Write(strDict.Count);
+            foreach (KeyValuePair<string, HashSet<string>> pair in strDict)
+            {
+                writer.WriteNullTerminatedString(pair.Key);
+                writer.Write(pair.Value.Count());
+                pair.Value.ToList().ForEach(item => writer.WriteNullTerminatedString(item));
+            }
+        }
         #endregion
         #region Readers
 
@@ -147,6 +157,22 @@ namespace AutoBundleManagerPlugin
             for (int i = 0; i < count; i++)
                 intList.Add(reader.ReadInt());
             return intList;
+        }
+
+        public static Dictionary<string, HashSet<string>> ReadStringToHashsetDictionary(this NativeReader reader)
+        {
+            int count = reader.ReadInt();
+            Dictionary<string, HashSet<string>> strDict = new Dictionary<string, HashSet<string>>();
+            for (int i = 0; i < count; i++)
+            {
+                string key = reader.ReadNullTerminatedString();
+                HashSet<string> valStrings = new HashSet<string>();
+                int valCount = reader.ReadInt();
+                for (int j = 0; j < valCount; j++)
+                    valStrings.Add(reader.ReadNullTerminatedString());
+                strDict.Add(key, valStrings);
+            }
+            return strDict;
         }
 
         #endregion

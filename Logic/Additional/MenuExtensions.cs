@@ -25,6 +25,22 @@ namespace AutoBundleManagerPlugin
     {
         public static string BMMenuName => "AutoBundleManager";
         public static string SubBMMenuName => null;
+        public class AutoBundleManagerCompleteBundlesBundlesMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Temp: Complete Bundles";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                new BundleCompleter(App.AssetManager, "EditorMod", new List<string>());
+            });
+
+        }
         public class AutoBundleManagerTestBlueprintBundlesMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;

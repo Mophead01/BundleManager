@@ -24,7 +24,7 @@ namespace AutoBundleManagerPlugin
 
         static AbmNetworkRegistryCache()
         {
-            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_NetworkRegistryObjects.cache")))
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_NetworkRegistryObjects.cache")))
             {
                 NetworkRegistryTypes = reader.ReadHashSetStrings();
                 int dictLength = reader.ReadInt();

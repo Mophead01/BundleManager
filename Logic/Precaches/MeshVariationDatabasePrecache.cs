@@ -226,7 +226,7 @@ namespace AutoBundleManagerPlugin
 
             //static AbmMeshVariationDatabasePrecache()
             //{
-            //    using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_NetworkRegistryObjects.cache")))
+            //    using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_NetworkRegistryObjects.cache")))
             //    {
             //        NetworkRegistryTypes = reader.ReadHashSetStrings();
             //        int dictLength = reader.ReadInt();
@@ -277,7 +277,7 @@ namespace AutoBundleManagerPlugin
         {
             MeshMvdbDatabase = new Dictionary<Guid, AbmMeshVariationDatabaseEntry>();
             VariationMvdbDatabase = new Dictionary<string, AbmMeshVariationDatabaseEntry>();
-            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_MeshVariationDatabasePrecache.cache")))
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_MeshVariationDatabasePrecache.cache")))
             {
                 int meshMvdbEntryCount = reader.ReadInt();
                 int varMvdbEntryCount = reader.ReadInt();

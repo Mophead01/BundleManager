@@ -57,7 +57,7 @@ namespace AutoBundleManagerPlugin
 
         static AbmRootInstanceCache()
         {
-            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_RootInstances.cache")))
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_RootInstances.cache")))
             {
                 uint version = reader.ReadUInt();
                 if (version != cacheVersion)

@@ -233,7 +233,7 @@ namespace AutoBundleManagerPlugin
             {
                 task.Update("Discovering basic info");
                 Dictionary<ChunkAssetEntry, (int, int)> chunkH32Cached = new Dictionary<ChunkAssetEntry, (int, int)>();
-                using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_H32FirstMip.cache")))
+                using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_H32FirstMip.cache")))
                 {
                     int chunkCount = reader.ReadInt();
                     for (int i = 0; i < chunkCount; i++)

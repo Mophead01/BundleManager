@@ -222,7 +222,7 @@ namespace AutoBundleManagerPlugin
         }
         static AbmBundleHeap()
         {
-            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_BundleHeap.cache")))
+            using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_BundleHeap.cache")))
             {
                 if (reader.ReadNullTerminatedString() != "MopMagicBundleHi" || reader.ReadInt() != 0)
                     return;
