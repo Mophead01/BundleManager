@@ -21,48 +21,48 @@ namespace AutoBundleManagerPlugin
 
         private static Dictionary<Sha1, AbmMeshVariationDatabaseEntry> cachedMeshVariationDbs = new Dictionary<Sha1, AbmMeshVariationDatabaseEntry>();
 
-        public static AbmMeshVariationDatabaseEntry GetMeshVariationEntry(EbxAssetEntry meshEntry)
-        {
-            return GetMeshVariationEntry(meshEntry, null);
-        }
+        //public static AbmMeshVariationDatabaseEntry GetMeshVariationEntry(EbxAssetEntry meshEntry)
+        //{
+        //    return GetMeshVariationEntry(meshEntry, null);
+        //}
 
-        public static AbmMeshVariationDatabaseEntry GetMeshVariationEntry(EbxAssetEntry meshEntry, EbxAssetEntry varEntry)
-        {
-            Sha1 meshSha1 = meshEntry.GetSha1();
-            Sha1 varSha1 = varEntry == null ? Sha1.Zero : varEntry.GetSha1();
+        //public static AbmMeshVariationDatabaseEntry GetMeshVariationEntry(EbxAssetEntry meshEntry, EbxAssetEntry varEntry)
+        //{
+        //    //Sha1 meshSha1 = meshEntry.GetSha1();
+        //    //Sha1 varSha1 = varEntry == null ? Sha1.Zero : varEntry.GetSha1();
 
-            //Check if already cached
-            if (cachedMeshVariationDbs.ContainsKey(meshSha1))
-                return cachedMeshVariationDbs[meshSha1];
-            if (varEntry != null)
-            {
-                Sha1 meshUnmodifiedSha1 = meshEntry.Sha1;
-                uint varHash = (uint)Utils.HashString(varEntry.Name, true);
-                if (AbmMeshVariationDatabasePrecache.MeshVariationDatabase.ContainsKey((meshEntry.Guid, varHash)))
-                    return AbmMeshVariationDatabasePrecache.MeshVariationDatabase[(meshEntry.Guid, varHash)];
-                else
-                    App.Logger.LogError($"You appear to have added a new Mesh Variation pair: {meshEntry.Name} - {varEntry.Name}.\nThis feature is NOT supported by the bundle manager and will cause issues. Please do not try to create custom mesh variation pairs.");
-                return null;
-            }
-            else
-            {
-                if (!meshEntry.HasModifiedData)
-                {
-                    if (AbmMeshVariationDatabasePrecache.MeshVariationDatabase.ContainsKey((meshEntry.Guid, 0)))
-                        return AbmMeshVariationDatabasePrecache.MeshVariationDatabase[(meshEntry.Guid, 0)];
-                    else
-                        App.Logger.LogError($"{meshEntry.Name} is unmodified but not contained within the abm meshvari precache. Please investigate");
-                }
+        //    ////Check if already cached
+        //    //if (cachedMeshVariationDbs.ContainsKey(meshSha1))
+        //    //    return cachedMeshVariationDbs[meshSha1];
+        //    //if (varEntry != null)
+        //    //{
+        //    //    Sha1 meshUnmodifiedSha1 = meshEntry.Sha1;
+        //    //    uint varHash = (uint)Utils.HashString(varEntry.Name, true);
+        //    //    if (AbmMeshVariationDatabasePrecache.MeshMvdbDatabase.ContainsKey((meshEntry.Guid, varHash)))
+        //    //        return AbmMeshVariationDatabasePrecache.MeshMvdbDatabase[(meshEntry.Guid, varHash)];
+        //    //    else
+        //    //        App.Logger.LogError($"You appear to have added a new Mesh Variation pair: {meshEntry.Name} - {varEntry.Name}.\nThis feature is NOT supported by the bundle manager and will cause issues. Please do not try to create custom mesh variation pairs.");
+        //    //    return null;
+        //    //}
+        //    //else
+        //    //{
+        //    //    if (!meshEntry.HasModifiedData)
+        //    //    {
+        //    //        if (AbmMeshVariationDatabasePrecache.MeshMvdbDatabase.ContainsKey((meshEntry.Guid, 0)))
+        //    //            return AbmMeshVariationDatabasePrecache.MeshMvdbDatabase[(meshEntry.Guid, 0)];
+        //    //        else
+        //    //            App.Logger.LogError($"{meshEntry.Name} is unmodified but not contained within the abm meshvari precache. Please investigate");
+        //    //    }
 
-                EbxAsset meshAsset = App.AssetManager.GetEbx(meshEntry);
-                dynamic meshRoot = meshAsset.RootObject;
-                AbmMeshVariationDatabaseEntry newMeshVariEntry = new AbmMeshVariationDatabaseEntry(meshEntry, meshAsset, meshRoot);
-                cachedMeshVariationDbs.Add(meshEntry.GetSha1(), newMeshVariEntry);
-                cacheNeedsUpdating = true;
-                return cachedMeshVariationDbs[meshEntry.GetSha1()];
+        //    //    EbxAsset meshAsset = App.AssetManager.GetEbx(meshEntry);
+        //    //    dynamic meshRoot = meshAsset.RootObject;
+        //    //    AbmMeshVariationDatabaseEntry newMeshVariEntry = new AbmMeshVariationDatabaseEntry(meshEntry, meshAsset, meshRoot);
+        //    //    cachedMeshVariationDbs.Add(meshEntry.GetSha1(), newMeshVariEntry);
+        //    //    cacheNeedsUpdating = true;
+        //    //    return cachedMeshVariationDbs[meshEntry.GetSha1()];
 
-            }
-        }
+        //    //}
+        //}
         //public static AbmMeshVariationDatabaseEntry GetMeshVariationEntry(EbxAssetEntry meshEntry, EbxAssetEntry varEntry)
         //{
         //    Sha1 meshSha1 = meshEntry.GetSha1();

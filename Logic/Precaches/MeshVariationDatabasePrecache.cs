@@ -270,18 +270,27 @@ namespace AutoBundleManagerPlugin
 
     public static class AbmMeshVariationDatabasePrecache
     {
-        public static Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry> MeshVariationDatabase;
+        public static Dictionary<Guid, AbmMeshVariationDatabaseEntry> MeshMvdbDatabase;
+        public static Dictionary<string, AbmMeshVariationDatabaseEntry> VariationMvdbDatabase;
 
         static AbmMeshVariationDatabasePrecache()
         {
-            MeshVariationDatabase = new Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry>();
+            MeshMvdbDatabase = new Dictionary<Guid, AbmMeshVariationDatabaseEntry>();
+            VariationMvdbDatabase = new Dictionary<string, AbmMeshVariationDatabaseEntry>();
             using (NativeReader reader = new NativeReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManager.Data.Swbf2_MeshVariationDatabasePrecache.cache")))
             {
-                int mvdbEntryCount = reader.ReadInt();
-                for (int i = 0; i < mvdbEntryCount; i++)
+                int meshMvdbEntryCount = reader.ReadInt();
+                int varMvdbEntryCount = reader.ReadInt();
+                for (int i = 0; i < meshMvdbEntryCount; i++)
                 {
                     AbmMeshVariationDatabaseEntry mvEntry = new AbmMeshVariationDatabaseEntry(reader);
-                    MeshVariationDatabase.Add((mvEntry.Mesh.External.FileGuid, mvEntry.VariationAssetNameHash), mvEntry);
+                    MeshMvdbDatabase.Add(mvEntry.Mesh.External.FileGuid, mvEntry);
+                }
+                for (int i = 0; i < varMvdbEntryCount; i++)
+                {
+                    string blocksName = reader.ReadNullTerminatedString();
+                    AbmMeshVariationDatabaseEntry mvEntry = new AbmMeshVariationDatabaseEntry(reader);
+                    VariationMvdbDatabase.Add(blocksName, mvEntry);
                 }
             }
         }
@@ -291,8 +300,10 @@ namespace AutoBundleManagerPlugin
             if (!Directory.Exists(fi.DirectoryName))
                 Directory.CreateDirectory(fi.DirectoryName);
 
-            MeshVariationDatabase = new Dictionary<(Guid, uint), AbmMeshVariationDatabaseEntry>();
+            MeshMvdbDatabase = new Dictionary<Guid, AbmMeshVariationDatabaseEntry>();
+            VariationMvdbDatabase = new Dictionary<string, AbmMeshVariationDatabaseEntry>();
             dynamic forLock = new object();
+            Dictionary<uint, EbxAssetEntry> hashesToObjectVariations = App.AssetManager.EnumerateEbx(type: "ObjectVariation").ToDictionary(refEntry => (uint)Utils.HashString(refEntry.Name, true), refEntry => refEntry);
             task.ParallelForeach("Caching MeshVariationDatabases", App.AssetManager.EnumerateEbx(type: "MeshVariationDatabase"), (parEntry, index) =>
             {
                 dynamic parRoot = App.AssetManager.GetEbx(parEntry, true).RootObject;
@@ -303,8 +314,20 @@ namespace AutoBundleManagerPlugin
                     {
                         Guid refGuid = mvdbEntry.Mesh.External.FileGuid;
                         uint varHash = mvdbEntry.VariationAssetNameHash;
-                        if (!MeshVariationDatabase.ContainsKey((refGuid, varHash)))
-                            MeshVariationDatabase.Add((refGuid, varHash), new AbmMeshVariationDatabaseEntry(mvdbEntry));
+
+                        if (varHash == 0)
+                        {
+                            if (!MeshMvdbDatabase.ContainsKey(refGuid))
+                                MeshMvdbDatabase.Add(refGuid, new AbmMeshVariationDatabaseEntry(mvdbEntry));
+                        }
+                        else
+                        {
+                            EbxAssetEntry meshEntry = App.AssetManager.GetEbxEntry(refGuid);
+                            EbxAssetEntry varEntry = hashesToObjectVariations[varHash];
+                            string blocksName = $"{varEntry.Name}/{meshEntry.DisplayName}_{(uint)Utils.HashString(meshEntry.Name)}/shaderblocks_variation/blocks".ToLower();
+                            if (!VariationMvdbDatabase.ContainsKey(blocksName))
+                                VariationMvdbDatabase.Add(blocksName, new AbmMeshVariationDatabaseEntry(mvdbEntry));
+                        }
                     }
                     if (parRoot.RedirectEntries.Count > 0)
                         App.Logger.Log($"{parEntry.Name}:\tRedirect Entries:\t{parRoot.RedirectEntries.Count}");
@@ -313,9 +336,15 @@ namespace AutoBundleManagerPlugin
 
             using (NativeWriter writer = new NativeWriter(new FileStream(fi.FullName, FileMode.Create)))
             {
-                writer.Write(MeshVariationDatabase.Count());
-                foreach (KeyValuePair<(Guid, uint), AbmMeshVariationDatabaseEntry> pair in MeshVariationDatabase.OrderBy(pair => pair.Key.Item1))
+                writer.Write(MeshMvdbDatabase.Count());
+                writer.Write(VariationMvdbDatabase.Count());
+                foreach (KeyValuePair<Guid, AbmMeshVariationDatabaseEntry> pair in MeshMvdbDatabase.OrderBy(pair => pair.Key))
                     pair.Value.WriteBinary(writer);
+                foreach (KeyValuePair<string, AbmMeshVariationDatabaseEntry> pair in VariationMvdbDatabase.OrderBy(pair => pair.Key))
+                {
+                    writer.WriteNullTerminatedString(pair.Key);
+                    pair.Value.WriteBinary(writer);
+                }
             }
         }
     }

@@ -111,6 +111,7 @@ namespace AutoBundleManagerPlugin
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public HashSet<Guid> chunkGuids = new HashSet<Guid>();
         public HashSet<Guid> networkRegistryReferenceGuids = new HashSet<Guid>();
+        public AbmMeshVariationDatabaseEntry meshVariEntry = null;
         //public HashSet<(Guid, Guid)> meshVariationIds = new HashSet<(Guid, Guid)> ();
 
         public EbxDependencyDetector(EbxAssetEntry parEntry, EbxAsset parAsset)
@@ -140,6 +141,22 @@ namespace AutoBundleManagerPlugin
                 case "StaticMeshAsset":
                 case "SkinnedMeshAsset":
                 case "CompositeMeshAsset":
+                    Sha1 meshSha1 = parEntry.GetSha1();
+                    //Check if already cached
+                    if (!parEntry.HasModifiedData)
+                    {
+                        if (AbmMeshVariationDatabasePrecache.MeshMvdbDatabase.ContainsKey(parEntry.Guid))
+                        {
+                            meshVariEntry = AbmMeshVariationDatabasePrecache.MeshMvdbDatabase[parEntry.Guid];
+                            break;
+                        }
+                        else
+                            App.Logger.LogError($"{parEntry.Name} is unmodified but not contained within the abm meshvari precache. Please investigate");
+                    }
+
+                    dynamic meshRoot = parAsset.RootObject;
+                    meshVariEntry = new AbmMeshVariationDatabaseEntry(parEntry, parAsset, meshRoot);
+
                     //meshVariationIds.Add((parEntry.Guid, Guid.Empty));
                     break;
             }
@@ -303,8 +320,9 @@ namespace AutoBundleManagerPlugin
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public Dictionary<Guid, int> chunkGuids = new Dictionary<Guid, int>();
         public HashSet<Guid> networkRegistryRefGuids = new HashSet<Guid>();
+        public AbmMeshVariationDatabaseEntry meshVariEntry = null;
         //public HashSet<(Guid, Guid)> meshVariationIds = new HashSet<(Guid, Guid)>();
-        public DependencySavedData(string srcName, Guid srcGuid, bool isRes, HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, Dictionary<Guid, int> chunkGuids, HashSet<Guid> networkRegistryRefGuids)
+        public DependencySavedData(string srcName, Guid srcGuid, bool isRes, HashSet<string> refNames, HashSet<Guid> ebxGuids, HashSet<ulong> resRids, Dictionary<Guid, int> chunkGuids, HashSet<Guid> networkRegistryRefGuids, AbmMeshVariationDatabaseEntry meshVariEntry)
         {
             this.srcName = srcName;
             this.srcGuid = srcGuid;
@@ -314,6 +332,7 @@ namespace AutoBundleManagerPlugin
             this.resRids = resRids;
             this.chunkGuids = chunkGuids;
             this.networkRegistryRefGuids = networkRegistryRefGuids;
+            this.meshVariEntry = meshVariEntry;
             //this.meshVariationIds = meshVariationIds;
         }
 
@@ -333,6 +352,8 @@ namespace AutoBundleManagerPlugin
                     chunkGuids.Add(guidPair.Key, guidPair.Value);
             foreach (Guid refGuid in copyFrom.networkRegistryRefGuids)
                 networkRegistryRefGuids.Add(refGuid);
+            if (this.meshVariEntry == null && copyFrom.meshVariEntry != null)
+                meshVariEntry = copyFrom.meshVariEntry;
             //foreach ((Guid, Guid) mvPair in copyFrom.meshVariationIds)
             //    meshVariationIds.Add(mvPair);
         }
@@ -346,6 +367,7 @@ namespace AutoBundleManagerPlugin
         public HashSet<ResAssetEntry> resRefs = new HashSet<ResAssetEntry>();
         public Dictionary<ChunkAssetEntry, int> chkRefs = new Dictionary<ChunkAssetEntry, int>();
         public HashSet<Guid> networkRegistryRefGuids = new HashSet<Guid>();
+        public AbmMeshVariationDatabaseEntry meshVariEntry = null;
         //public HashSet<AbmMeshVariationDatabaseEntry> meshVariEntries = new HashSet<AbmMeshVariationDatabaseEntry>();
         public DependencyActiveData(DependencySavedData rawDependency)
         {
@@ -382,6 +404,7 @@ namespace AutoBundleManagerPlugin
             }
             foreach (Guid networkRegistryReferenceGuid in rawDependency.networkRegistryRefGuids)
                 networkRegistryRefGuids.Add(networkRegistryReferenceGuid);
+            meshVariEntry = rawDependency.meshVariEntry;
 
             //foreach((Guid, Guid) meshVariPair in rawDependency.meshVariationIds)
             //{
@@ -459,13 +482,13 @@ namespace AutoBundleManagerPlugin
                 {
                     EbxDependencyDetector ebxDependencyDetector = new EbxDependencyDetector((EbxAssetEntry)parEntry, App.AssetManager.GetEbx((EbxAssetEntry)parEntry));
                     dependencies.Add(sha1, new DependencySavedData(parEntry.Name, ((EbxAssetEntry)parEntry).Guid, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, 
-                        ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1), ebxDependencyDetector.networkRegistryReferenceGuids));
+                        ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1), ebxDependencyDetector.networkRegistryReferenceGuids, ebxDependencyDetector.meshVariEntry));
                 }
                 else if (parEntry.GetType() == typeof(ResAssetEntry))
                 {
                     ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)((ResAssetEntry)parEntry).ResType]);
                     extension.ExtractData(((ResAssetEntry)parEntry).ResRid);
-                    dependencies.Add(sha1, new DependencySavedData(parEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>() { }));
+                    dependencies.Add(sha1, new DependencySavedData(parEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>() { }, null));
                 }
                 else
                     throw new Exception("Unknown AssetEntry Type");
@@ -548,6 +571,9 @@ namespace AutoBundleManagerPlugin
                     writer.Write(pair.Value.resRids);
                     writer.Write(pair.Value.chunkGuids);
                     writer.Write(pair.Value.networkRegistryRefGuids);
+                    writer.Write(pair.Value.meshVariEntry != null);
+                    if (pair.Value.meshVariEntry != null)
+                        pair.Value.meshVariEntry.WriteToGameEntry();
                     //writer.Write(pair.Value.meshVariationIds);
                 }
             }
@@ -565,7 +591,8 @@ namespace AutoBundleManagerPlugin
                     return;
                 int dependencyCount = reader.ReadInt();
                 for (int i = 0; i < dependencyCount; i++)
-                    dependencies.Add(reader.ReadSha1(), new DependencySavedData(reader.ReadNullTerminatedString(), reader.ReadGuid() ,reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), reader.ReadHashSetULongs(), reader.ReadGuidDictionary(), reader.ReadHashSetGuids()));
+                    dependencies.Add(reader.ReadSha1(), new DependencySavedData(reader.ReadNullTerminatedString(), reader.ReadGuid() ,reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), 
+                        reader.ReadHashSetULongs(), reader.ReadGuidDictionary(), reader.ReadHashSetGuids(), reader.ReadBoolean() ? new AbmMeshVariationDatabaseEntry(reader) : null));
             }
         }
     }
