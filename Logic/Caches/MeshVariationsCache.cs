@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace AutoBundleManagerPlugin
 {
+    //To be made redundant
     public static class MeshVariationsCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/MeshVariationsCache.cache";
