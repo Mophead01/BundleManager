@@ -1,4 +1,5 @@
-﻿using Frosty.Core;
+﻿using AutoBundleManagerPlugin.Logic.Precaches;
+using Frosty.Core;
 using Frosty.Core.Windows;
 using FrostySdk;
 using FrostySdk.Ebx;
@@ -11,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static DuplicationPlugin.DuplicationTool;
 
 namespace AutoBundleManagerPlugin
 {
@@ -25,9 +27,12 @@ namespace AutoBundleManagerPlugin
             lastTimestamp = stopWatch.ElapsedMilliseconds;
         }
         Dictionary<AssetEntry, DependencyActiveData> loggedDependencies = new Dictionary<AssetEntry, DependencyActiveData>();
+
+        private static List<string> sublevelEbxTypes = new List<string> { "SubWorldData", "LevelData", "DetachedSubWorldData" };
         public BundleCompleter(FrostyTaskWindow task, AssetManager AM, string fbmodName,List<string> loadOrder) 
         {
             stopWatch.Start();
+            AbmBundleHeap.ClearCustomBundles();
 
             if (!loadOrder.Contains(fbmodName))
                 loadOrder.Add(fbmodName);
@@ -39,6 +44,7 @@ namespace AutoBundleManagerPlugin
             //
             // Get data from modified files and check to see if they modify the bundle heap, if so make changes
             //
+            //DONT FORGET RES FROM OTHER PROJECTS
             foreach (EbxAssetEntry parEntry in AM.EnumerateEbx()) 
             {
                 if (!parEntry.HasModifiedData && !parEntry.IsImaginary)
@@ -53,6 +59,97 @@ namespace AutoBundleManagerPlugin
                 else
                     loggedDependencies.Add(parEntry, dependencies);
             }
+
+            //
+            //  Add custom bundles to bundle heap
+            //
+
+            List<int> mpvurParentBundles = new List<string> { "win32/default_settings",
+                "win32/gameplay/bundles/sharedbundles/common/weapons/sharedbundleweapons_common",
+                "win32/gameplay/wrgameconfiguration",
+                "win32/gameplay/bundles/sharedbundles/frontend+mp/characters/sharedbundlecharacters_frontend+mp",
+                "win32/gameplay/bundles/sharedbundles/common/vehicles/sharedbundlevehiclescockpits"
+            }.Select(bunName => AM.GetBundleId(bunName)).ToList();
+
+            foreach (BundleEntry bEntry in AM.EnumerateBundles().Where(bEntry => bEntry.Added))
+            {
+                bool isBpb = bEntry.Type == BundleType.BlueprintBundle || bEntry.Name.ToLower().EndsWith("_bpb");
+
+                if (isBpb)
+                {
+                    if (bEntry.Name.StartsWith("Win32/weapons/"))
+                        new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>() { AM.GetBundleId("win32/gameplay/bundles/sharedbundles/common/weapons/sharedbundleweapons_common") });
+                    else if (bEntry.Name.Contains("Gameplay/Bundles/SP/"))
+                        new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>() { AM.GetBundleId("win32/Levels/SP/RootLevel/RootLeveln") });
+                    else
+                        new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, mpvurParentBundles);
+                }
+                else
+                    new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>());
+            }
+
+            //
+            //  Forced Bundle Transfers
+            //
+            foreach(KeyValuePair<string, List<string>> forcedTransfers in AutoBundleManagerOptions.ForcedBundleTransfers)
+            {
+                string targBunName = forcedTransfers.Key;
+                int targBunId = AM.GetBundleId(targBunName);
+                if (targBunId != -1)
+                {
+                    foreach(string sourceBunName in forcedTransfers.Value)
+                    {
+                        int sourceBunId = AM.GetBundleId(sourceBunName);
+                        if (sourceBunId != -1)
+                        {
+                            List<AssetEntry> assetsToAdd = new List<AssetEntry>(AM.EnumerateEbx().Where(o => o.IsInBundle(sourceBunId)));
+                            assetsToAdd.AddRange(AM.EnumerateRes().Where(o => o.IsInBundle(targBunId)));
+                            foreach (AssetEntry refEntry in assetsToAdd)
+                            {
+                                if (refEntry != App.AssetManager.GetEbxEntry(sourceBunName.Substring(6,0)))
+                                {
+                                    switch (refEntry.Type)
+                                    {
+                                        case "NetworkRegistryAsset":
+                                            //if (!BlockNetworkRegistries)
+                                            //{
+                                            //    //EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
+                                            //    //netEntry.AddedBundles.Clear();
+                                            //    //netEntry.AddToBundle(newBunId);
+                                            //    //LogString(netEntry.AssetType, "Duplicating original network registry", netEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                            //}
+                                            break;
+                                        case "MeshVariationDatabase":
+                                            //EbxAssetEntry mvEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.Replace("win32/", "") + "/MeshVariationDb_Win32", false, null);
+                                            //mvEntry.AddedBundles.Clear();
+                                            //mvEntry.AddToBundle(newBunId);
+                                            //LogString(mvEntry.AssetType, "Duplicating original meshvariationdb", mvEntry.Name, AM.GetBundleEntry(newBunId).Name);
+                                            break;
+                                        default:
+                                            if (refEntry.IsInBundle(targBunId))
+                                                continue;
+                                            refEntry.AddToBundle(targBunId);
+                                            AddToLog(refEntry.AssetType, "Copying from duplicated bundle", refEntry.Name, AM.GetBundleEntry(targBunId).Name);
+                                            break;
+                                    }
+                                }
+                            }
+                            foreach (ChunkAssetEntry chunkEntry in AM.EnumerateChunks().Where(o => o.IsInBundle(sourceBunId)))
+                            {
+                                if (chunkEntry.IsInBundle(targBunId))
+                                    continue;
+                                chunkEntry.FirstMip = ChunkH32Precache.chunkH32Cached[chunkEntry].Item1;
+                                chunkEntry.H32 = ChunkH32Precache.chunkH32Cached[chunkEntry].Item2;
+                                AddToLog(chunkEntry.AssetType, "Setting H32&Firstmip (h32 cache)", ChunkH32Precache.chunkH32Cached[chunkEntry].Item1.ToString(), ChunkH32Precache.chunkH32Cached[chunkEntry].Item2.ToString());
+                                chunkEntry.AddToBundle(targBunId);
+                                AddToLog(chunkEntry.AssetType, "Copying from duplicated bundle", chunkEntry.Name, AM.GetBundleEntry(targBunId).Name);
+                            }
+                        }
+                    }
+                }
+            }
+
+
 
             //
             //  List of modified assets for each bundle which we will enumerate over later.
@@ -78,12 +175,23 @@ namespace AutoBundleManagerPlugin
                     if (bunId != -1)
                     {
                         BundleHeapEntry heapEntry = AbmBundleHeap.Bundles[bunId];
-                        foreach(string bunParStr in bunParents.Value)
+                        BundleEntry bEntry = AM.GetBundleEntry(bunId);
+                        bool isBpb = bEntry.Type == BundleType.BlueprintBundle || bEntry.Name.ToLower().EndsWith("_bpb");
+                        void TryAddParent(string bunName)
                         {
-                            int bunParId = AM.GetBundleId("win32/" + bunParStr);
+                            int bunParId = AM.GetBundleId(bunName);
                             if (bunParId != -1 && !heapEntry.EnumerateParentBundleIds(false).Contains(bunParId))
                                 heapEntry.CustomParentIds.Add(bunParId);
                         }
+                        foreach (string bunParStr in bunParents.Value)
+                            TryAddParent("win32/" + bunParStr);
+                        if (!isBpb && sublevelEbxTypes.Contains(parEntry.Type))
+                        {
+                            TryAddParent("win32/" + parEntry.Name);
+                            foreach (int bunParId in parEntry.EnumerateBundles())
+                                TryAddParent(AM.GetBundleEntry(bunParId).Name);
+                        }
+
                         AddToLog("Caching", "Modifying Bundle Hierarchy", bunParents.Key, string.Join(", ", bunParents.Value));
                     }
                 }
@@ -298,6 +406,7 @@ namespace AutoBundleManagerPlugin
             }
 
             AbmDependenciesCache.UpdateCache();
+            AbmBundleHeap.ClearCustomBundles();
             stopWatch.Stop();
             App.Logger.Log(string.Format("Bundle Manager Completed in {0} seconds.", stopWatch.Elapsed));
         }

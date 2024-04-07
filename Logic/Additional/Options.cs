@@ -41,6 +41,8 @@ namespace AutoBundleManagerPlugin
                 }
                 foreach (string subStr in strList.Split('$'))
                 {
+                    if (subStr.Split(':').Count() < 2)
+                        continue;
                     string assetName = subStr.Split(':')[0];
                     returnList.Add(assetName, new List<string>());
                     foreach (string subStr2 in subStr.Split(':')[1].Split('£'))
@@ -51,6 +53,30 @@ namespace AutoBundleManagerPlugin
             set
             {
                 Config.Add("ABM_ForcedBundleEdits", string.Join("$", value.ToList().Select(pair => $"{pair.Key}:{string.Join("£", pair.Value)}")), ConfigScope.Game);
+            }
+        }
+        public static Dictionary<string, List<string>> ForcedBundleTransfers
+        {
+            get
+            {
+                string strList = Config.Get<string>("ForcedBundleTransfers", null, ConfigScope.Game);
+                Dictionary<string, List<string>> returnList = new Dictionary<string, List<string>>();
+                if (strList == null)
+                    return returnList;
+                foreach (string subStr in strList.Split('$'))
+                {
+                    if (subStr.Split(':').Count() < 2)
+                        continue;
+                    string assetName = subStr.Split(':')[0];
+                    returnList.Add(assetName, new List<string>());
+                    foreach (string subStr2 in subStr.Split(':')[1].Split('£'))
+                        returnList[assetName].Add(subStr2);
+                }
+                return returnList;
+            }
+            set
+            {
+                Config.Add("ForcedBundleTransfers", string.Join("$", value.ToList().Select(pair => $"{pair.Key}:{string.Join("£", pair.Value)}")), ConfigScope.Game);
             }
         }
     }
@@ -72,6 +98,26 @@ namespace AutoBundleManagerPlugin
         public ForcedBundleEditsViewer()
         {
             bundleNames = new List<CString>();
+        }
+    }
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class ForcedBundleTransfersViewer
+    {
+        [DisplayName("Target Bundle Name")]
+        [Description("Name of the bundle to transfers assets to")]
+        public CString targetBundleName { get; set; }
+
+        [DisplayName("Source Bundles")]
+        [Description("List of bundles to transfer from")]
+        public List<CString> copyBundleNames { get; set; }
+        public ForcedBundleTransfersViewer(string assetName, List<string> bundleNames)
+        {
+            this.targetBundleName = assetName;
+            this.copyBundleNames = bundleNames.Select(str => new CString(str)).ToList();
+        }
+        public ForcedBundleTransfersViewer()
+        {
+            copyBundleNames = new List<CString>();
         }
     }
 }

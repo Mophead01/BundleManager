@@ -235,6 +235,20 @@ namespace AutoBundleManagerPlugin
             {
             }
         }
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Array)]
+        [DisplayName("Forced Bundle Transfers")]
+        [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
+        public List<ForcedBundleTransfersViewer> ForcedBundleTransfers
+        {
+            get
+            {
+                return AutoBundleManagerOptions.ForcedBundleTransfers.Select(pair => new ForcedBundleTransfersViewer(pair.Key, pair.Value)).ToList();
+            }
+            set
+            {
+            }
+        }
         //[Category("ReadOnlyCaches")]
         //[EbxFieldMeta(EbxFieldType.Array)]
         //[DisplayName("MeshVariationDb Cache")]
@@ -379,6 +393,18 @@ namespace AutoBundleManagerPlugin
                 }
                 AutoBundleManagerOptions.ForcedBundleEdits = returnDict;
             }
+
+            foreach (FrostyPropertyGridItemData child in ((ObservableCollection<FrostyPropertyGridItemData>)topLevel.Children).Where(child => child.DisplayName == "Forced Bundle Transfers"))
+            {
+                Dictionary<string, List<string>> returnDict = new Dictionary<string, List<string>>();
+                foreach (ForcedBundleTransfersViewer forcedEdits in ((dynamic)child).Value)
+                {
+                    if (!returnDict.ContainsKey(forcedEdits.targetBundleName))
+                        returnDict.Add(forcedEdits.targetBundleName, forcedEdits.copyBundleNames.Select(name => name.ToString()).ToList());
+                }
+                AutoBundleManagerOptions.ForcedBundleTransfers = returnDict;
+            }
+            Config.Save();
         }
 
         private void AutoBundleMangaerOptionsViewer_Loaded(object sender, RoutedEventArgs e)
