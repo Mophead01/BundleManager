@@ -193,7 +193,7 @@ namespace AutoBundleManagerPlugin
 
             foreach (KeyValuePair<int, BundleHeapEntry> bundlePair in Bundles)
             {
-                if (checkCustomOnly && (bundlePair.Value.IsCustomBundle || bundlePair.Value.CustomParentIds.Count > 0))
+                if (checkCustomOnly && !(bundlePair.Value.IsCustomBundle || bundlePair.Value.CustomParentIds.Count > 0))
                     continue;
                 VerifyParents(bundlePair.Key, new List<int> { bundlePair.Key });
             }

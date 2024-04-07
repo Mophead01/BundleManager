@@ -37,7 +37,15 @@ namespace AutoBundleManagerPlugin
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                new BundleCompleter(App.AssetManager, "EditorMod", new List<string>());
+                //App.AssetManager.AddImaginaryBundle("A0_Mophead/ImaginaryBundleTest", BundleType.BlueprintBundle, 0);
+                //App.AssetManager.AddImaginaryEbx("A0_Mophead/ImaginaryEbxTest", Guid.NewGuid(), FrostySdk.Sha1.Zero, "VisualUnlockRootAsset");
+                //App.AssetManager.AddImaginaryRes("A0_Mophead/ImaginaryResTest".ToLower(), resType:ResourceType.IesResource, 10, FrostySdk.Sha1.Zero);
+                //App.AssetManager.AddImaginaryChunk(10, FrostySdk.Sha1.Zero, Guid.NewGuid());
+                //App.EditorWindow.DataExplorer.RefreshAll();
+                FrostyTaskWindow.Show("Caching Bundles", "", (task) =>
+                {
+                    new BundleCompleter(task, App.AssetManager, "EditorMod", new List<string>());
+                });
             });
 
         }

@@ -511,7 +511,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 19;
+        private static int cacheVersion = 20;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencySavedData> dependencies = new Dictionary<Sha1, DependencySavedData>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
@@ -616,7 +616,7 @@ namespace AutoBundleManagerPlugin
                     writer.Write(pair.Value.networkRegistryRefGuids);
                     writer.Write(pair.Value.meshVariEntry != null);
                     if (pair.Value.meshVariEntry != null)
-                        pair.Value.meshVariEntry.WriteToGameEntry();
+                        pair.Value.meshVariEntry.WriteBinary(writer);
                     writer.Write(pair.Value.bundleReferences);
                     //writer.Write(pair.Value.meshVariationIds);
                 }
@@ -637,6 +637,7 @@ namespace AutoBundleManagerPlugin
                 for (int i = 0; i < dependencyCount; i++)
                     dependencies.Add(reader.ReadSha1(), new DependencySavedData(reader.ReadNullTerminatedString(), reader.ReadGuid() ,reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), 
                         reader.ReadHashSetULongs(), reader.ReadGuidDictionary(), reader.ReadHashSetGuids(), reader.ReadBoolean() ? new AbmMeshVariationDatabaseEntry(reader) : null, reader.ReadStringToHashsetDictionary()));
+                //App.Logger.Log("Read Cache");
             }
         }
     }
