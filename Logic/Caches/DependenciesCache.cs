@@ -18,6 +18,7 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace AutoBundleManagerPlugin
@@ -638,6 +639,112 @@ namespace AutoBundleManagerPlugin
                     dependencies.Add(reader.ReadSha1(), new DependencySavedData(reader.ReadNullTerminatedString(), reader.ReadGuid() ,reader.ReadBoolean(), reader.ReadHashSetStrings(), reader.ReadHashSetGuids(), 
                         reader.ReadHashSetULongs(), reader.ReadGuidDictionary(), reader.ReadHashSetGuids(), reader.ReadBoolean() ? new AbmMeshVariationDatabaseEntry(reader) : null, reader.ReadStringToHashsetDictionary()));
                 //App.Logger.Log("Read Cache");
+            }
+        }
+
+        public static void WriteToXml()
+        {
+            Dictionary<string, List<(Sha1, DependencySavedData)>> ebxDependencies = new Dictionary<string, List<(Sha1, DependencySavedData)>>();
+            Dictionary<string, List<(Sha1, DependencySavedData)>> resDependencies = new Dictionary<string, List<(Sha1, DependencySavedData)>>();
+            foreach(KeyValuePair <Sha1,DependencySavedData> pair in dependencies)
+            {
+                bool isRes = pair.Value.isRes;
+                string assetName = pair.Value.srcName;
+                Dictionary<string, List<(Sha1, DependencySavedData)>> dependenciesList = isRes ? resDependencies : ebxDependencies;
+                if (dependenciesList.ContainsKey(assetName))
+                    dependenciesList[assetName].Add((pair.Key, pair.Value));
+                else
+                    dependenciesList.Add(assetName, new List<(Sha1, DependencySavedData)>() { (pair.Key, pair.Value) });
+            }
+
+            void WriteData(XmlWriter writer, (string, List<(Sha1, DependencySavedData)>) data)
+            {
+                List<(Sha1, DependencySavedData)> dataToEnumerate = data.Item2;
+                bool isEbx = !data.Item2[0].Item2.isRes;
+                bool isAdded;
+                Sha1 unmodifiedSha1 = new Sha1();
+                if (isEbx)
+                {
+                    isAdded = !(App.AssetManager.GetEbxEntry(data.Item1) == null || App.AssetManager.GetEbxEntry(data.Item1).IsAdded);
+                    if (isAdded)
+                        unmodifiedSha1 = App.AssetManager.GetEbxEntry(data.Item1).Sha1;
+                }
+                else
+                {
+                    isAdded = !(App.AssetManager.GetResEntry(data.Item1) == null || App.AssetManager.GetResEntry(data.Item1).IsAdded);
+                    if (isAdded)
+                        unmodifiedSha1 = App.AssetManager.GetResEntry(data.Item1).Sha1;
+                }
+                // Find the index of the first item that matches the criteria
+                int index = dataToEnumerate.FindIndex(item => item.Item1 == unmodifiedSha1);
+
+                // If an item matching the criteria is found and it's not already at the start
+                if (index != -1 && index != 0)
+                {
+                    // Move the item to the start of the list
+                    (Sha1, DependencySavedData) itemToMove = dataToEnumerate[index];
+                    dataToEnumerate.RemoveAt(index);
+                    dataToEnumerate.Insert(0, itemToMove);
+                }
+
+                writer.WriteStartElement("AssetData");
+                writer.WriteAttributeString("Versions", data.Item2.Count().ToString());
+                writer.WriteElementString("AssetName", data.Item1);
+                writer.WriteElementString("IsAdded", isAdded.ToString());
+                writer.WriteElementString("AssetType", !isEbx ? "Res" : "Ebx");
+                writer.WriteStartElement("Dependencies");
+                foreach((Sha1, DependencySavedData) savedPair in dataToEnumerate)
+                {
+                    writer.WriteStartElement("SavedData");
+                    writer.WriteElementString("Sha1", savedPair.Item1.ToString());
+                    writer.WriteElementString("UnmodifiedData", (savedPair.Item1 == unmodifiedSha1).ToString());
+                    DependencySavedData savedData = savedPair.Item2;
+                    writer.WriteStartElement("RawDependencies");
+                    foreach (string name in savedData.refNames)
+                        writer.WriteElementString("ReferenceNames", name.ToString());
+                    foreach (Guid guid in savedData.ebxGuids)
+                        writer.WriteElementString("EbxGuid", guid.ToString());
+                    foreach (ulong resRid in savedData.resRids)
+                        writer.WriteElementString("ResRids", resRid.ToString());
+                    foreach (KeyValuePair<Guid, int> chkPair in savedData.chunkGuids)
+                    {
+                        writer.WriteElementString("ChunkGuid", chkPair.Key.ToString());
+                        //writer.WriteAttributeString("FirstMip", chkPair.Value.ToString());
+                    }
+                    writer.WriteEndElement();
+
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement();
+
+                writer.WriteEndElement();
+
+            }
+            using (XmlWriter writer = XmlWriter.Create($"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.xml", new XmlWriterSettings() { Indent = true}))
+            {
+                // Write the XML declaration
+                writer.WriteStartDocument();
+
+                // Write the root element
+                writer.WriteStartElement("Dependencies");
+
+                writer.WriteStartElement("Ebx");
+                writer.WriteAttributeString("Count", ebxDependencies.Count.ToString());
+                foreach(KeyValuePair<string, List<(Sha1, DependencySavedData)>> pair in  ebxDependencies)
+                    WriteData(writer, (pair.Key, pair.Value));
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("Res");
+                writer.WriteAttributeString("Count", resDependencies.Count.ToString());
+                foreach (KeyValuePair<string, List<(Sha1, DependencySavedData)>> pair in resDependencies)
+                    WriteData(writer, (pair.Key, pair.Value));
+                writer.WriteEndElement();
+
+                // Close the root element
+                writer.WriteEndElement();
+
+                // Write the end of the document
+                writer.WriteEndDocument();
             }
         }
     }

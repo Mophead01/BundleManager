@@ -197,6 +197,26 @@ namespace AutoBundleManagerPlugin
             });
 
         }
+        public class AbmDependenciesToXmlMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Export: Dependencies Cache to Xml";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Writing Txt", "", (task) =>
+                {
+                    AbmDependenciesCache.WriteToXml();
+                    //AbmMeshVariationDatabasePrecache.WriteToCache(task);
+                });
+            });
+
+        }
         public class AbmOptionsMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;
