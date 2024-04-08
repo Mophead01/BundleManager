@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
@@ -511,11 +512,35 @@ namespace AutoBundleManagerPlugin
     }
     public static class AbmDependenciesCache
     {
-        private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.cache";
-        private static int cacheVersion = 20;
+        private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DependenciesCache.cache";
+        private static int cacheVersion = 21;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencySavedData> dependencies = new Dictionary<Sha1, DependencySavedData>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
+        
+        public static bool HasSha1(Sha1 sha1)
+        {
+            return dependencies.ContainsKey(sha1);
+        }
+        public static void CreateRawEbxDependency(Sha1 sha1, EbxAssetEntry parEntry, EbxAsset parAsset = null, bool isEmpty = false)
+        {
+            if (dependencies.ContainsKey(sha1))
+            {
+                if (dependencies[sha1].srcName.ToLower() != parEntry.Name.ToLower())
+                    App.Logger.LogError($"MAJOR ERROR: TWO ASSETS USING THE SAME SHA1: {sha1}\t{dependencies[sha1].srcName}\t{parEntry.Name}");
+                return;
+            }
+            cacheNeedsUpdating = true;
+            if (!isEmpty)
+            {
+                parAsset = parAsset == null ? App.AssetManager.GetEbx(parEntry) : parAsset;
+                EbxDependencyDetector ebxDependencyDetector = new EbxDependencyDetector(parEntry, parAsset);
+                dependencies.Add(sha1, new DependencySavedData(parEntry.Name, ((EbxAssetEntry)parEntry).Guid, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids,
+                    ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1), ebxDependencyDetector.networkRegistryReferenceGuids, ebxDependencyDetector.meshVariEntry, ebxDependencyDetector.bundleReferences));
+            }
+            else
+                dependencies.Add(sha1, new DependencySavedData(parEntry.Name, parEntry.Guid, false, new HashSet<string>(), new HashSet<Guid>(), new HashSet<ulong>(), new Dictionary<Guid, int>(), new HashSet<Guid>(), null, new Dictionary<string, HashSet<string>>()));
+        }
         private static DependencySavedData GetRawDependencies(AssetEntry parEntry, bool getResDependencies = true)
         {
             Sha1 sha1 = parEntry.GetSha1();
@@ -523,11 +548,7 @@ namespace AutoBundleManagerPlugin
             {
                 cacheNeedsUpdating = true;
                 if (parEntry.GetType() == typeof(EbxAssetEntry))
-                {
-                    EbxDependencyDetector ebxDependencyDetector = new EbxDependencyDetector((EbxAssetEntry)parEntry, App.AssetManager.GetEbx((EbxAssetEntry)parEntry));
-                    dependencies.Add(sha1, new DependencySavedData(parEntry.Name, ((EbxAssetEntry)parEntry).Guid, false, ebxDependencyDetector.refNames, ebxDependencyDetector.ebxPointerGuids, ebxDependencyDetector.resRids, 
-                        ebxDependencyDetector.chunkGuids.ToDictionary(chkGuid => chkGuid, chkGuid => -1), ebxDependencyDetector.networkRegistryReferenceGuids, ebxDependencyDetector.meshVariEntry, ebxDependencyDetector.bundleReferences));
-                }
+                    CreateRawEbxDependency(sha1, (EbxAssetEntry)parEntry);
                 else if (parEntry.GetType() == typeof(ResAssetEntry))
                 {
                     ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)((ResAssetEntry)parEntry).ResType]);
@@ -537,6 +558,7 @@ namespace AutoBundleManagerPlugin
                 else
                     throw new Exception("Unknown AssetEntry Type");
             }
+
             DependencySavedData dependencyData =  new DependencySavedData(dependencies[sha1]);
             void ExtractRes(ulong resRid)
             {
@@ -720,7 +742,7 @@ namespace AutoBundleManagerPlugin
                 writer.WriteEndElement();
 
             }
-            using (XmlWriter writer = XmlWriter.Create($"{App.FileSystem.CacheName}/AutoBundleManager/DepedenciesCache.xml", new XmlWriterSettings() { Indent = true}))
+            using (XmlWriter writer = XmlWriter.Create($"{App.FileSystem.CacheName}/AutoBundleManager/DependenciesCache.xml", new XmlWriterSettings() { Indent = true}))
             {
                 // Write the XML declaration
                 writer.WriteStartDocument();

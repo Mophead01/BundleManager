@@ -1,6 +1,8 @@
 ﻿using AutoBundleManagerPlugin;
 using Frosty.Core;
+using Frosty.Core.Attributes;
 using Frosty.Core.Controls;
+using Frosty.Core.Mod;
 using Frosty.Core.Windows;
 using FrostySdk.Attributes;
 using FrostySdk.Ebx;
@@ -14,11 +16,16 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Xml;
 using static AutoBundleManagerPlugin.AbmTestModule;
-
+using Newtonsoft.Json;
+using Formatting = Newtonsoft.Json.Formatting;
+using System.Security.Cryptography.X509Certificates;
+using AutoBundleManagerPlugin.Logic.Operations;
 namespace AutoBundleManagerPlugin
 {
     public class AbmMenuExtensions
@@ -37,15 +44,23 @@ namespace AutoBundleManagerPlugin
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                //App.AssetManager.AddImaginaryBundle("A0_Mophead/ImaginaryBundleTest", BundleType.BlueprintBundle, 0);
-                //App.AssetManager.AddImaginaryEbx("A0_Mophead/ImaginaryEbxTest", Guid.NewGuid(), FrostySdk.Sha1.Zero, "VisualUnlockRootAsset");
-                //App.AssetManager.AddImaginaryRes("A0_Mophead/ImaginaryResTest".ToLower(), resType:ResourceType.IesResource, 10, FrostySdk.Sha1.Zero);
-                //App.AssetManager.AddImaginaryChunk(10, FrostySdk.Sha1.Zero, Guid.NewGuid());
-                //App.EditorWindow.DataExplorer.RefreshAll();
-                FrostyTaskWindow.Show("Caching Bundles", "", (task) =>
+                string editorModName = "KyberMod.fbmod";
+                string basePath = $@"{(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)).Replace("\\", @"/").Replace("/Plugins", "")}/Mods/Kyber";
+                List<string> fbmodNames = KyberIntegration.GetLoadOrder(basePath).Select(shortName => $"{basePath}/{shortName}").ToList();
+                editorModName = $"{basePath}/{editorModName}";
+
+                foreach (string fbmodName in fbmodNames)
                 {
-                    new BundleCompleter(task, App.AssetManager, "EditorMod", new List<string>());
-                });
+                    if (fbmodName != editorModName)
+                        new FbmodParsing(fbmodName);
+                }
+                AbmDependenciesCache.UpdateCache();
+                AbmDependenciesCache.WriteToXml();
+
+                //FrostyTaskWindow.Show("Completing Bundles", "", (task) =>
+                //{
+                //    new BundleCompleter(task, App.AssetManager, "EditorMod", new List<string>());
+                //});
             });
 
         }

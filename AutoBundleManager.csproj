@@ -75,6 +75,9 @@
       <HintPath>..\FrostyToolsuite\FrostyEditor\bin\Developer\Debug\Plugins\MeshSetPlugin.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>D:\Modding\Frosty\FrostyToolsuite-1.0.71\FrostyEditor\bin\Developer\Debug\ThirdParty\Newtonsoft.Json.dll</HintPath>
+    </Reference>
   </ItemGroup>
 	
   <ItemGroup>
