@@ -18,7 +18,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 {
     public class FbmodParsing
     {
-        private static int cacheVersion = 0;
+        private static int cacheVersion = 1;
         protected static int HashBundle(BundleEntry bentry)
         {
             return HashBundle(bentry.Name);
@@ -36,10 +36,12 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         protected static Dictionary<uint, string> typeHashesToNames = TypeLibrary.GetConcreteTypes().ToDictionary(type => (uint)Utils.HashString(type.Name, true), type => type.Name);
         protected static Dictionary<int, string> bundleHashesToNames = App.AssetManager.EnumerateBundles().Where(bEntry => !bEntry.Added && !bEntry.Imaginary).ToDictionary(bunEntry => HashBundle(bunEntry), bunEntry => bunEntry.Name);
         private Dictionary<int, string> adaptiveBundleHashesToIds = new Dictionary<int, string>(bundleHashesToNames) { };
-        private static List<string> swbf2GameplayHandlerTypes = new List<string> { "WSTeamData"};
+        private static List<string> swbf2GameplayHandlerTypes = new List<string> { "WSTeamData" };
 
         private List<ParsedCustomBundle> ParsedBundles = new List<ParsedCustomBundle>();
         private List<ParsedModifiedEbx> ParsedEbx = new List<ParsedModifiedEbx>();
+        private List<ParsedModifiedRes> ParsedRes = new List<ParsedModifiedRes>();
+        private List<ParsedModifiedChunk> ParsedChunks = new List<ParsedModifiedChunk>();
         private class ParsedCustomBundle
         {
             public string Name;
@@ -52,7 +54,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 writer.Write(SuperBundleId);
                 parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
-            public ParsedCustomBundle(FbmodParsing parser, BaseModResource resource) 
+            public ParsedCustomBundle(FbmodParsing parser, BaseModResource resource)
             {
                 BundleEntry bEntry = new BundleEntry();
                 resource.FillAssetEntry(bEntry);
@@ -92,7 +94,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 writer.Write(FileGuid);
                 writer.Write(Hash != null);
                 if (Hash != null)
-                     writer.Write(Hash);
+                    writer.Write(Hash);
                 writer.Write(AddedBundles);
             }
             public ParsedModifiedEbx(NativeReader reader)
@@ -131,7 +133,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     {
                         dataObject = data;
                         Type = typeHashesToNames[(uint)resource.Handler];
-                        if(swbf2GameplayHandlerTypes.Contains(Type))
+                        if (swbf2GameplayHandlerTypes.Contains(Type))
                         {
                             ICustomActionHandler handler = App.PluginManager.GetCustomHandler((uint)resource.Handler);
                             if (handler == null)
@@ -166,6 +168,84 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 AddedBundles = parser.GetResourceBundles(resource);
             }
         }
+        private class ParsedModifiedRes
+        {
+            public string Name;
+            public ResourceType ResType; //Need to figure out way to work this out
+            public bool IsImaginary = false; //Need to figure out way to work this out
+            public bool HasHandler = false;
+            public ulong ResRid; //Need to figure out way to work this out
+            public byte[] ResMeta; //Need to figure out way to work this out
+            public Sha1 Hash;
+            public long OriginalSize;
+            public HashSet<string> AddedBundles = new HashSet<string>();
+
+            public Object dataObject; //Only when parsing the fbmod
+
+            public ParsedModifiedRes(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
+            {
+                Name = resource.Name;
+                byte[] data = null;
+
+                ResAssetEntry resEntry = new ResAssetEntry();
+                resource.FillAssetEntry(resEntry);
+                bool isAdded = App.AssetManager.GetResEntry(Name) == null || App.AssetManager.GetResEntry(Name).IsAdded;
+                HasHandler = resource.HasHandler;
+
+                if (resource.IsModified)
+                {
+                    data = fbmodReader.GetResourceData(resource);
+                    if (resource.HasHandler)
+                    {
+                        // // Don't need to care about res handlers yet
+                        //ICustomActionHandler handler = App.PluginManager.GetCustomHandler(resType);
+                        //if (handler == null)
+                        //    throw new Exception($"Missing custom handler capable of reading asset type \"{resType}\"");
+                    }
+                    else
+                    {
+                        using (NativeReader reader = new NativeReader(rm.GetResourceData(data)))
+                            data = reader.ReadToEnd();
+                    }
+                    Hash = Utils.GenerateSha1(data);
+                }
+                ResMeta = resEntry.ResMeta;
+
+            }
+        }
+        private class ParsedModifiedChunk //No handlers here so only need to care about what needs to be written to the fbmod in terms of imaginary assets
+        {
+            public Guid ChunkGuid;
+            public int FirstMip;
+            public int H32;
+            public HashSet<string> AddedBundles = new HashSet<string>();
+
+            public void WriteToCache(NativeWriter writer)
+            {
+                writer.Write(ChunkGuid);
+                writer.Write(FirstMip);
+                writer.Write(H32);
+                writer.Write(AddedBundles);
+            }
+            public ParsedModifiedChunk(NativeReader reader)
+            {
+                ChunkGuid = reader.ReadGuid();
+                FirstMip = reader.ReadInt();
+                H32 = reader.ReadInt();
+                AddedBundles = reader.ReadHashSetStrings();
+            }
+
+            public ParsedModifiedChunk(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
+            {
+                ChunkGuid = new Guid(resource.Name);
+                ChunkAssetEntry chkReadEntry = new ChunkAssetEntry();
+                resource.FillAssetEntry(chkReadEntry);
+                FirstMip = chkReadEntry.FirstMip;
+                H32 = chkReadEntry.H32;
+                AddedBundles = parser.GetResourceBundles(resource);
+            }
+        }
+
         static string CalculateChecksum(string filePath, HashAlgorithm algorithm)
         {
             using (var stream = File.OpenRead(filePath))
@@ -176,16 +256,39 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         }
         void AddImaginaryAssetsToAssetManager()
         {
-            foreach(ParsedCustomBundle customBundle in ParsedBundles.Where(customBundle => App.AssetManager.GetBundleId(customBundle.Name) == -1))
+            foreach (ParsedCustomBundle customBundle in ParsedBundles.Where(customBundle => App.AssetManager.GetBundleId(customBundle.Name) == -1))
                 App.AssetManager.AddImaginaryBundle(customBundle.Name, customBundle.Type, superBundleHashesToIds[customBundle.SuperBundleId]);
 
-            foreach (ParsedModifiedEbx parsedEbx in ParsedEbx.Where(parsedEbx => App.AssetManager.GetEbxEntry(parsedEbx.Name) == null))
+            foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
             {
                 EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(parsedEbx.Name);
                 if (refEntry == null)
                     App.AssetManager.AddImaginaryEbx(parsedEbx.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
                 else
                     refEntry.AddToBundles(parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+            }
+
+            foreach (ParsedModifiedRes parsedRes in ParsedRes)
+            {
+                ResAssetEntry resEntry = App.AssetManager.GetResEntry(parsedRes.Name);
+                //Fix this to be res
+                if (resEntry == null)
+                    App.AssetManager.AddImaginaryRes(parsedRes.Name, parsedRes.ResType, parsedRes.OriginalSize, parsedRes.Hash, parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedRes.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                else
+                    resEntry.AddToBundles(parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+            }
+            foreach (ParsedModifiedChunk parsedChk in ParsedChunks)
+            {
+                ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(parsedChk.ChunkGuid);
+                // Fix this to be chk and don't forget FirstMip/H32
+                if (chkEntry == null)
+                    App.AssetManager.AddImaginaryChunk(0, Sha1.Zero, parsedChk.ChunkGuid, parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedChk.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                else
+                {
+                    chkEntry.AddToBundles(parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+                    chkEntry.H32 = parsedChk.H32;
+                    chkEntry.FirstMip = parsedChk.FirstMip;
+                }
             }
         }
         public bool TryReadCache(string cacheFullPath, string checksum)
@@ -201,6 +304,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     return false;
                 int parsedBundlesCount = reader.ReadInt();
                 int parsedEbxCount = reader.ReadInt();
+                int parsedResCount = reader.ReadInt();
+                int parsedChkCount = reader.ReadInt();
                 for (int i = 0; i < parsedBundlesCount; i++)
                     ParsedBundles.Add(new ParsedCustomBundle(reader));
                 for (int i = 0; i < parsedEbxCount; i++)
@@ -210,8 +315,18 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         return false;
                     ParsedEbx.Add(parsedEbx);
                 }
+                for (int i = 0; i < parsedResCount; i++)
+                {
+                    //ParsedModifiedRes parsedRes = new ParsedModifiedRes(reader);
+                    //if (parsedRes.Hash != null && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
+                    //    return false;
+                    //ParsedRes.Add(parsedRes);
+                }
+                for (int i = 0; i < parsedEbxCount; i++)
+                    ParsedChunks.Add(new ParsedModifiedChunk(reader));
 
             }
+            AddImaginaryAssetsToAssetManager();
 
             return true;
         }
@@ -221,7 +336,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 App.Logger.LogWarning($"{resource.Name}\t{bunHash}");
             return new HashSet<string>(resource.AddedBundles.Where(bunHash => adaptiveBundleHashesToIds.ContainsKey(bunHash)).Select(bunHash => adaptiveBundleHashesToIds[bunHash]).ToList());
         }
-        public FbmodParsing(string fbmodFullPath) 
+        public FbmodParsing(string fbmodFullPath)
         {
             string checksum = CalculateChecksum(fbmodFullPath, new SHA256Managed());
             string fbmodShortName = fbmodFullPath.Split('/').Last();
@@ -240,6 +355,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 adaptiveBundleHashesToIds = new Dictionary<int, string>(bundleHashesToNames);
                 ParsedBundles.Clear();
                 ParsedEbx.Clear();
+                ParsedRes.Clear();
+                ParsedChunks.Clear();
 
 
                 ResourceManager rm = new ResourceManager(App.FileSystem);
@@ -263,6 +380,16 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                                 case ModResourceType.Ebx:
                                     {
                                         ParsedEbx.Add(new ParsedModifiedEbx(this, resource, reader, rm));
+                                        break;
+                                    }
+                                case ModResourceType.Res:
+                                    {
+                                        ParsedRes.Add(new ParsedModifiedRes(this, resource, reader, rm));
+                                        break;
+                                    }
+                                case ModResourceType.Chunk:
+                                    {
+                                        ParsedChunks.Add(new ParsedModifiedChunk(this, resource, reader, rm));
                                         break;
                                     }
                             }
@@ -294,10 +421,16 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     writer.WriteNullTerminatedString(checksum);
                     writer.Write(ParsedBundles.Count);
                     writer.Write(ParsedEbx.Count);
+                    writer.Write(ParsedRes.Count);
+                    writer.Write(ParsedChunks.Count);
                     foreach (ParsedCustomBundle parsedBundle in ParsedBundles)
                         parsedBundle.WriteToCache(this, writer);
                     foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
                         parsedEbx.WriteToCache(writer);
+                    //foreach (ParsedModifiedRes parsedRes in ParsedRes)
+                    //    parsedRes.WriteToCache(writer);
+                    //foreach (ParsedModifiedChunks parsedChk in ParsedChunks)
+                    //    parsedChk.WriteToCache(writer);
                 }
             }
         }
