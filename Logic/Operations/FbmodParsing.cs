@@ -5,6 +5,8 @@ using Frosty.Hash;
 using FrostySdk;
 using FrostySdk.IO;
 using FrostySdk.Managers;
+using FrostySdk.Resources;
+using MeshSetPlugin.Resources;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +14,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 
 namespace AutoBundleManagerPlugin.Logic.Operations
@@ -74,8 +77,9 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         private class ParsedModifiedEbx
         {
             public string Name;
+
+            public bool ContainsModifiedData;
             public string Type;
-            public bool IsImaginary = false;
             public bool HasHandler = false;
             public Guid FileGuid;
             public Sha1 Hash;
@@ -88,24 +92,27 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             public void WriteToCache(NativeWriter writer)
             {
                 writer.WriteNullTerminatedString(Name);
-                writer.WriteNullTerminatedString(Type);
-                writer.Write(IsImaginary);
-                writer.Write(HasHandler);
-                writer.Write(FileGuid);
-                writer.Write(Hash != null);
-                if (Hash != null)
+                writer.Write(ContainsModifiedData);
+                if (ContainsModifiedData)
+                {
+                    writer.WriteNullTerminatedString(Type);
+                    writer.Write(HasHandler);
+                    writer.Write(FileGuid);
                     writer.Write(Hash);
+                }
                 writer.Write(AddedBundles);
             }
             public ParsedModifiedEbx(NativeReader reader)
             {
                 Name = reader.ReadNullTerminatedString();
-                Type = reader.ReadNullTerminatedString();
-                IsImaginary = reader.ReadBoolean();
-                HasHandler = reader.ReadBoolean();
-                FileGuid = reader.ReadGuid();
-                if (reader.ReadBoolean())
+                ContainsModifiedData = reader.ReadBoolean();
+                if (ContainsModifiedData)
+                {
+                    Type = reader.ReadNullTerminatedString();
+                    HasHandler = reader.ReadBoolean();
+                    FileGuid = reader.ReadGuid();
                     Hash = reader.ReadSha1();
+                }
                 AddedBundles = reader.ReadHashSetStrings();
             }
 
@@ -113,6 +120,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             {
                 Name = resource.Name;
                 Object dataObject = null;
+
+                ContainsModifiedData = resource.IsModified;
 
                 if (resource.IsModified)
                 {
@@ -133,74 +142,108 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     {
                         dataObject = data;
                         Type = typeHashesToNames[(uint)resource.Handler];
-                        if (swbf2GameplayHandlerTypes.Contains(Type))
+                        //if (swbf2GameplayHandlerTypes.Contains(Type))
+                        //{
+                        ICustomActionHandler handler = App.PluginManager.GetCustomHandler((uint)resource.Handler);
+                        if (handler == null)
+                            throw new Exception($"Missing custom handler capable of reading asset type \"{typeHashesToNames[(uint)resource.Handler]}\"");
+
+                        HandlerExtraData extraData = new HandlerExtraData();
+
+                        extraData.Handler = App.PluginManager.GetCustomHandler((uint)Utils.HashString(Type, true)); ;
+                        extraData.Data = extraData.Handler.Load(extraData.Data, (byte[])dataObject);
+                        RuntimeResources runtimeResources = new RuntimeResources();
+                        AssetEntry newEntry = new AssetEntry() { Name = Name };
+                        extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetEbxEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] ebxData);
+                        using (EbxReader reader = EbxReader.CreateReader(rm.GetResourceData(ebxData), App.FileSystem))
                         {
-                            ICustomActionHandler handler = App.PluginManager.GetCustomHandler((uint)resource.Handler);
-                            if (handler == null)
-                                throw new Exception($"Missing custom handler capable of reading asset type \"{typeHashesToNames[(uint)resource.Handler]}\"");
-
-                            HandlerExtraData extraData = new HandlerExtraData();
-
-                            extraData.Handler = App.PluginManager.GetCustomHandler((uint)Utils.HashString(Type, true)); ;
-                            extraData.Data = extraData.Handler.Load(extraData.Data, (byte[])dataObject);
-                            RuntimeResources runtimeResources = new RuntimeResources();
-                            AssetEntry newEntry = new AssetEntry() { Name = Name };
-                            extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetEbxEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] ebxData);
-                            using (EbxReader reader = EbxReader.CreateReader(new ResourceManager(App.FileSystem).GetResourceData(ebxData), App.FileSystem))
-                            {
-                                modifiedAsset = reader.ReadAsset<EbxAsset>();
-                                Name = ((dynamic)((EbxAsset)modifiedAsset).RootObject).Name;
-                                Type = ((dynamic)((EbxAsset)modifiedAsset).RootObject).GetType().Name;
-                                reader.BaseStream.Position = 0;
-                                Hash = Utils.GenerateSha1(reader.ReadToEnd());
-                            }
+                            modifiedAsset = reader.ReadAsset<EbxAsset>();
+                            Name = ((dynamic)((EbxAsset)modifiedAsset).RootObject).Name;
+                            Type = ((dynamic)((EbxAsset)modifiedAsset).RootObject).GetType().Name;
+                            reader.BaseStream.Position = 0;
+                            Hash = Utils.GenerateSha1(reader.ReadToEnd());
                         }
+                        //}
 
                     }
                 }
                 else if (!resource.IsAdded)
-                {
                     Name = App.AssetManager.GetEbxEntry(Name).Name; //Fix capitalisaiton
-                    Type = App.AssetManager.GetEbxEntry(Name).Type;
-                }
-                else
-                    IsImaginary = true;
                 AddedBundles = parser.GetResourceBundles(resource);
             }
         }
         private class ParsedModifiedRes
         {
             public string Name;
-            public ResourceType ResType; //Need to figure out way to work this out
-            public bool IsImaginary = false; //Need to figure out way to work this out
-            public bool HasHandler = false;
+
+            public bool ContainsModifiedData; 
+
+            public ResourceType ResType; 
+            public bool HasHandler = false; //Important to know if we need to merge between mods
             public ulong ResRid; //Need to figure out way to work this out
-            public byte[] ResMeta; //Need to figure out way to work this out
             public Sha1 Hash;
-            public long OriginalSize;
             public HashSet<string> AddedBundles = new HashSet<string>();
 
-            public Object dataObject; //Only when parsing the fbmod
+            public byte[] ResMeta; //Only when parsing the fbmod
+            public byte[] data; //Only when parsing the fbmod
+
+            public void WriteToCache(NativeWriter writer)
+            {
+                writer.WriteNullTerminatedString(Name);
+                writer.Write(ContainsModifiedData);
+                if (ContainsModifiedData)
+                {
+                    writer.Write(HasHandler);
+                    writer.Write(ResRid);
+                    writer.Write(Hash);
+                }
+                writer.Write(AddedBundles);
+            }
+
+            public ParsedModifiedRes(NativeReader reader)
+            {
+                Name = reader.ReadNullTerminatedString();
+                ContainsModifiedData = reader.ReadBoolean();
+                if (ContainsModifiedData)
+                {
+                    HasHandler = reader.ReadBoolean();
+                    ResRid = reader.ReadULong();
+                    Hash = reader.ReadSha1();
+                }
+                AddedBundles = reader.ReadHashSetStrings();
+            }
 
             public ParsedModifiedRes(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
             {
                 Name = resource.Name;
-                byte[] data = null;
-
-                ResAssetEntry resEntry = new ResAssetEntry();
-                resource.FillAssetEntry(resEntry);
-                bool isAdded = App.AssetManager.GetResEntry(Name) == null || App.AssetManager.GetResEntry(Name).IsAdded;
-                HasHandler = resource.HasHandler;
+                ContainsModifiedData = resource.IsModified;
 
                 if (resource.IsModified)
                 {
+                    ResAssetEntry resEntry = new ResAssetEntry();
+                    resource.FillAssetEntry(resEntry);
+
+                    HasHandler = resource.HasHandler;
+                    ResRid = resEntry.ResRid;
+                    ResType = (ResourceType)resEntry.ResType;
+                    ResMeta = resEntry.ResMeta;
                     data = fbmodReader.GetResourceData(resource);
                     if (resource.HasHandler)
                     {
-                        // // Don't need to care about res handlers yet
-                        //ICustomActionHandler handler = App.PluginManager.GetCustomHandler(resType);
-                        //if (handler == null)
-                        //    throw new Exception($"Missing custom handler capable of reading asset type \"{resType}\"");
+                        // Don't need to care about res handlers yet
+                        ICustomActionHandler handler = App.PluginManager.GetCustomHandler(ResType);
+                        if (handler == null)
+                            throw new Exception($"Missing custom handler capable of reading asset type \"{ResType}\"");
+
+                        HandlerExtraData extraData = new HandlerExtraData();
+
+                        extraData.Handler = App.PluginManager.GetCustomHandler(ResType);
+                        extraData.Data = extraData.Handler.Load(extraData.Data, data);
+                        RuntimeResources runtimeResources = new RuntimeResources();
+                        AssetEntry newEntry = new AssetEntry() { Name = Name };
+                        extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetResEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] resData);
+                        using (NativeReader reader = new NativeReader(rm.GetResourceData(resData)))
+                            data = reader.ReadToEnd();
                     }
                     else
                     {
@@ -209,8 +252,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     }
                     Hash = Utils.GenerateSha1(data);
                 }
-                ResMeta = resEntry.ResMeta;
 
+                AddedBundles = parser.GetResourceBundles(resource);
             }
         }
         private class ParsedModifiedChunk //No handlers here so only need to care about what needs to be written to the fbmod in terms of imaginary assets
@@ -262,27 +305,53 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
             {
                 EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(parsedEbx.Name);
+                int[] bunIds = parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (refEntry == null)
-                    App.AssetManager.AddImaginaryEbx(parsedEbx.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                    App.AssetManager.AddImaginaryEbx(parsedEbx.Name, parsedEbx.FileGuid, parsedEbx.ContainsModifiedData ? parsedEbx.Hash : Sha1.Zero, parsedEbx.ContainsModifiedData ? parsedEbx.Type : null, bunIds);
                 else
-                    refEntry.AddToBundles(parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+                {
+                    if (parsedEbx.ContainsModifiedData && refEntry.IsImaginary)
+                    {
+                        if (refEntry.IsTotallyImaginary)
+                            refEntry.Type = parsedEbx.Type;
+                        refEntry.Sha1 = parsedEbx.Hash;
+
+                    }
+                    refEntry.AddToBundles(bunIds);
+                }
             }
 
             foreach (ParsedModifiedRes parsedRes in ParsedRes)
             {
                 ResAssetEntry resEntry = App.AssetManager.GetResEntry(parsedRes.Name);
-                //Fix this to be res
+                int[] bunIds = (int[])parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (resEntry == null)
-                    App.AssetManager.AddImaginaryRes(parsedRes.Name, parsedRes.ResType, parsedRes.OriginalSize, parsedRes.Hash, parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedRes.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                {
+                    if (parsedRes.ContainsModifiedData)
+                        App.AssetManager.AddImaginaryRes(parsedRes.Name, parsedRes.ResRid, parsedRes.ResType, parsedRes.Hash, bunIds);
+                    else
+                        App.AssetManager.AddImaginaryRes(parsedRes.Name, 0, ResourceType.Invalid, Sha1.Zero, bunIds);
+                }
                 else
-                    resEntry.AddToBundles(parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+                {
+                    if (parsedRes.ContainsModifiedData && resEntry.IsImaginary)
+                    {
+                        if (App.AssetManager.GetResEntry(parsedRes.ResRid) == null)
+                            App.AssetManager.UpdateImaginaryResRid(resEntry, resEntry.ResRid);
+                        if (resEntry.IsTotallyImaginary)
+                            resEntry.ResType = (uint)parsedRes.ResType;
+                        resEntry.Sha1 = parsedRes.Hash;
+
+                    }
+                    resEntry.AddToBundles(bunIds);
+                }
             }
             foreach (ParsedModifiedChunk parsedChk in ParsedChunks)
             {
                 ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(parsedChk.ChunkGuid);
                 // Fix this to be chk and don't forget FirstMip/H32
                 if (chkEntry == null)
-                    App.AssetManager.AddImaginaryChunk(0, Sha1.Zero, parsedChk.ChunkGuid, parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedChk.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                    App.AssetManager.AddImaginaryChunk(parsedChk.ChunkGuid, parsedChk.H32, parsedChk.FirstMip, parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedChk.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
                 else
                 {
                     chkEntry.AddToBundles(parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
@@ -317,12 +386,12 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 }
                 for (int i = 0; i < parsedResCount; i++)
                 {
-                    //ParsedModifiedRes parsedRes = new ParsedModifiedRes(reader);
-                    //if (parsedRes.Hash != null && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
-                    //    return false;
-                    //ParsedRes.Add(parsedRes);
+                    ParsedModifiedRes parsedRes = new ParsedModifiedRes(reader);
+                    if (parsedRes.Hash != null && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
+                        return false;
+                    ParsedRes.Add(parsedRes);
                 }
-                for (int i = 0; i < parsedEbxCount; i++)
+                for (int i = 0; i < parsedChkCount; i++)
                     ParsedChunks.Add(new ParsedModifiedChunk(reader));
 
             }
@@ -332,7 +401,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         }
         private HashSet<string> GetResourceBundles(BaseModResource resource)
         {
-            foreach (int bunHash in resource.AddedBundles.Where(bunHash => !adaptiveBundleHashesToIds.ContainsKey(bunHash)))
+            foreach (int bunHash in resource.AddedBundles.Where(bunHash => !adaptiveBundleHashesToIds.ContainsKey(bunHash) && bunHash != 1548502573)) //1548502573 is chunk bundle
                 App.Logger.LogWarning($"{resource.Name}\t{bunHash}");
             return new HashSet<string>(resource.AddedBundles.Where(bunHash => adaptiveBundleHashesToIds.ContainsKey(bunHash)).Select(bunHash => adaptiveBundleHashesToIds[bunHash]).ToList());
         }
@@ -407,9 +476,23 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         ModifiedEntry = new ModifiedAssetEntry() { Data = parsedEbx.data }
                     };
                     if (parsedEbx.modifiedAsset != null)
-                        AbmDependenciesCache.CreateRawEbxDependency(parsedEbx.Hash, parEntry, (parsedEbx.modifiedAsset));
-                    else if (parsedEbx.Hash != null)
+                        AbmDependenciesCache.CreateRawEbxDependency(parsedEbx.Hash, parEntry, parsedEbx.modifiedAsset);
+                    else if (parsedEbx.Hash != null) //Handler case - To be removed?
                         AbmDependenciesCache.CreateRawEbxDependency(parsedEbx.Hash, parEntry, isEmpty: true);
+                }
+                foreach (ParsedModifiedRes parsedRes in ParsedRes.Where(parsedRes => parsedRes.data != null))
+                {
+                    ResAssetEntry parEntry = new ResAssetEntry()
+                    {
+                        Name = parsedRes.Name,
+                        ResType = (uint)parsedRes.ResType,
+                        ResMeta = parsedRes.ResMeta,
+                        ModifiedEntry = new ModifiedAssetEntry() { Data = parsedRes.data }
+                    };
+                    if (parsedRes.data != null)
+                        AbmDependenciesCache.CreateRawResDependency(parsedRes.Hash, parEntry, new MemoryStream(parsedRes.data));
+                    else if (parsedRes.Hash != null) //Handler case - To be removed?
+                        AbmDependenciesCache.CreateRawResDependency(parsedRes.Hash, parEntry, isEmpty: true);
                 }
 
                 if (!Directory.Exists(Path.GetDirectoryName(cacheFullPath)))
@@ -427,10 +510,10 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         parsedBundle.WriteToCache(this, writer);
                     foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
                         parsedEbx.WriteToCache(writer);
-                    //foreach (ParsedModifiedRes parsedRes in ParsedRes)
-                    //    parsedRes.WriteToCache(writer);
-                    //foreach (ParsedModifiedChunks parsedChk in ParsedChunks)
-                    //    parsedChk.WriteToCache(writer);
+                    foreach (ParsedModifiedRes parsedRes in ParsedRes)
+                        parsedRes.WriteToCache(writer);
+                    foreach (ParsedModifiedChunk parsedChk in ParsedChunks)
+                        parsedChk.WriteToCache(writer);
                 }
             }
         }

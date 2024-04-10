@@ -33,30 +33,42 @@ namespace AutoBundleManagerPlugin
         public HashSet<Guid> ebxPointerGuids = new HashSet<Guid>();
         public HashSet<ulong> resRids = new HashSet<ulong>();
         public Dictionary<Guid, int> chunkGuids = new Dictionary<Guid, int>();
-        public virtual void ExtractData(ulong resRid)
+        public virtual void ExtractData(ulong resRid, ResAssetEntry resEntry, Stream resAsset = null)
         {
             this.resRid = resRid;
+        }
+        public T GetResAs<T>(ResAssetEntry entry, Stream stream, ModifiedResource modifiedData = null) where T : Resource, new()
+        {
+            if (stream == null)
+                return default;
 
+            using (NativeReader reader = new NativeReader(stream))
+            {
+                if (modifiedData == null)
+                {
+                    if (entry.ModifiedEntry?.DataObject != null)
+                        modifiedData = entry.ModifiedEntry.DataObject as ModifiedResource;
+                }
+
+                T retVal = new T();
+                retVal.Read(reader, App.AssetManager, entry, modifiedData);
+                return retVal;
+            }
         }
     }
     public class ShaderBlockDepotDependencyDetector : ResDependencyDetector
     {
         public override ResourceType resType => ResourceType.ShaderBlockDepot;
-        public override void ExtractData(ulong resRid)
+        public override void ExtractData(ulong resRid, ResAssetEntry resEntry, Stream resAsset = null)
         {
-            ResAssetEntry resBlockEntry = App.AssetManager.GetResEntry(resRid);
-
-            if (resBlockEntry != null)
+            using (NativeReader reader = new NativeReader(resAsset))
             {
-                using (NativeReader reader = new NativeReader(App.AssetManager.GetRes(resBlockEntry)))
+                for (int idx = 72; idx < Convert.ToInt32(reader.BaseStream.Length - 12); idx = idx + 4)
                 {
-                    for (int idx = 72; idx < Convert.ToInt32(reader.BaseStream.Length - 12); idx = idx + 4)
-                    {
-                        reader.BaseStream.Position = idx;
-                        Guid ReadGuid = reader.ReadGuid();
-                        if (AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid) != null)
-                            ebxPointerGuids.Add(AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid).Guid);
-                    }
+                    reader.BaseStream.Position = idx;
+                    Guid ReadGuid = reader.ReadGuid();
+                    if (AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid) != null)
+                        ebxPointerGuids.Add(AbmRootInstanceCache.GetEbxEntryByRootInstanceGuid(ReadGuid).Guid);
                 }
             }
         }
@@ -64,17 +76,16 @@ namespace AutoBundleManagerPlugin
     public class MeshSetDependencyDetector : ResDependencyDetector
     {
         public override ResourceType resType => ResourceType.MeshSet;
-        public override void ExtractData(ulong resRid)
+        public override void ExtractData(ulong resRid, ResAssetEntry resEntry, Stream resStream = null)
         {
-            ResAssetEntry meshSetResEntry = App.AssetManager.GetResEntry(resRid);
-            MeshSet meshSet = App.AssetManager.GetResAs<MeshSet>(meshSetResEntry);
+            MeshSet meshSet = GetResAs<MeshSet>(resEntry, resStream);
             foreach (MeshSetLod lod in meshSet.Lods)
             {
                 if (lod.ChunkId != Guid.Empty)
                     chunkGuids.Add(lod.ChunkId, -1);
             }
 
-            ResAssetEntry blocksEntry = App.AssetManager.GetResEntry(meshSetResEntry.Name + "_mesh/blocks");
+            ResAssetEntry blocksEntry = App.AssetManager.GetResEntry(resEntry.Name + "_mesh/blocks");
             if (blocksEntry != null)
                 resRids.Add(blocksEntry.ResRid);
         }
@@ -82,20 +93,18 @@ namespace AutoBundleManagerPlugin
     public class TextureDependencyDetector : ResDependencyDetector
     {
         public override ResourceType resType => ResourceType.Texture;
-        public override void ExtractData(ulong resRid)
+        public override void ExtractData(ulong resRid, ResAssetEntry resEntry, Stream resStream = null)
         {
-            ResAssetEntry resEntry = App.AssetManager.GetResEntry(resRid);
-            Texture texture = App.AssetManager.GetResAs<Texture>(resEntry);
+            Texture texture = GetResAs<Texture>(resEntry, resStream);
             chunkGuids.Add(texture.ChunkId, texture.FirstMip);
         }
     }
     public class AtlasTextureDependencyDetector : ResDependencyDetector
     {
         public override ResourceType resType => ResourceType.AtlasTexture;
-        public override void ExtractData(ulong resRid)
+        public override void ExtractData(ulong resRid, ResAssetEntry resEntry, Stream resStream = null)
         {
-            ResAssetEntry resEntry = App.AssetManager.GetResEntry(resRid);
-            AtlasTexture texture = App.AssetManager.GetResAs<AtlasTexture>(resEntry);
+            AtlasTexture texture = GetResAs<AtlasTexture>(resEntry, resStream);
             chunkGuids.Add(texture.ChunkId, 0);
         }
     }
@@ -541,6 +550,24 @@ namespace AutoBundleManagerPlugin
             else
                 dependencies.Add(sha1, new DependencySavedData(parEntry.Name, parEntry.Guid, false, new HashSet<string>(), new HashSet<Guid>(), new HashSet<ulong>(), new Dictionary<Guid, int>(), new HashSet<Guid>(), null, new Dictionary<string, HashSet<string>>()));
         }
+        public static void CreateRawResDependency(Sha1 sha1, ResAssetEntry resEntry, Stream resStream = null, bool isEmpty = false)
+        {
+            if (dependencies.ContainsKey(sha1))
+            {
+                if (dependencies[sha1].srcName.ToLower() != resEntry.Name.ToLower())
+                    App.Logger.LogError($"MAJOR ERROR: TWO ASSETS USING THE SAME SHA1: {sha1}\t{dependencies[sha1].srcName}\t{resEntry.Name}");
+                return;
+            }
+            cacheNeedsUpdating = true;
+            if (!isEmpty)
+            {
+                ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)(resEntry).ResType]);
+                extension.ExtractData(resEntry.ResRid, resEntry, resStream == null ? App.AssetManager.GetRes(resEntry) : resStream);
+                dependencies.Add(sha1, new DependencySavedData(resEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>() { }, null, new Dictionary<string, HashSet<string>>()));
+            }
+            else
+                dependencies.Add(sha1, new DependencySavedData(resEntry.Name, new Guid(), true, new HashSet<string>(), new HashSet<Guid>(), new HashSet<ulong>(), new Dictionary<Guid, int>(), new HashSet<Guid>(), null, new Dictionary<string, HashSet<string>>()));
+        }
         private static DependencySavedData GetRawDependencies(AssetEntry parEntry, bool getResDependencies = true)
         {
             Sha1 sha1 = parEntry.GetSha1();
@@ -550,11 +577,7 @@ namespace AutoBundleManagerPlugin
                 if (parEntry.GetType() == typeof(EbxAssetEntry))
                     CreateRawEbxDependency(sha1, (EbxAssetEntry)parEntry);
                 else if (parEntry.GetType() == typeof(ResAssetEntry))
-                {
-                    ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)((ResAssetEntry)parEntry).ResType]);
-                    extension.ExtractData(((ResAssetEntry)parEntry).ResRid);
-                    dependencies.Add(sha1, new DependencySavedData(parEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>() { }, null, new Dictionary<string, HashSet<string>>()));
-                }
+                    CreateRawResDependency(sha1, (ResAssetEntry)parEntry);
                 else
                     throw new Exception("Unknown AssetEntry Type");
             }
