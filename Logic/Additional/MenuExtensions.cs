@@ -49,18 +49,40 @@ namespace AutoBundleManagerPlugin
                 List<string> fbmodNames = KyberIntegration.GetLoadOrder(basePath).Select(shortName => $"{basePath}/{shortName}").ToList();
                 editorModName = $"{basePath}/{editorModName}";
 
-                foreach (string fbmodName in fbmodNames)
-                {
-                    if (fbmodName != editorModName)
-                        new FbmodParsing(fbmodName);
-                }
-                AbmDependenciesCache.UpdateCache();
-                AbmDependenciesCache.WriteToXml();
-
-                //FrostyTaskWindow.Show("Completing Bundles", "", (task) =>
+                //foreach (string fbmodName in fbmodNames)
                 //{
-                //    new BundleCompleter(task, App.AssetManager, "EditorMod", new List<string>());
-                //});
+                //    if (fbmodName != editorModName)
+                //        new FbmodParsing(fbmodName);
+                //}
+                //AbmDependenciesCache.UpdateCache();
+                //AbmDependenciesCache.WriteToXml();
+
+                FrostyTaskWindow.Show("Completing Bundles", "", (task) =>
+                {
+                    new BundleCompleter().CompleteBundles(task, ExportType.KyberLaunchOnly, editorModName, fbmodNames);
+                });
+                AbmDependenciesCache.WriteToXml();
+                App.EditorWindow.DataExplorer.RefreshAll();
+            });
+
+        }
+        public class AutoBundleManagerClearBundlesBundlesMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Temp: Clear Bundles";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostyTaskWindow.Show("Clearing Bundles", "", (task) =>
+                {
+                    new BundleCompleter().ClearBundles();
+                });
+                App.EditorWindow.DataExplorer.RefreshAll();
             });
 
         }

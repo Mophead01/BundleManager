@@ -467,6 +467,21 @@ namespace AutoBundleManagerPlugin
             //    meshVariEntries.Add(MeshVariationsCache.GetMeshVariationEntry(meshEntry, varEntry));
             //}
         }
+        public void AppendData(DependencyActiveData altData)
+        {
+            ebxRefs.UnionWith(altData.ebxRefs);
+            resRefs.UnionWith(altData.resRefs);
+            foreach(KeyValuePair<ChunkAssetEntry, int> pair in altData.chkRefs)
+            {
+                if (chkRefs.ContainsKey(pair.Key))
+                    chkRefs[pair.Key] = pair.Value;
+                else
+                    chkRefs.Add(pair.Key, pair.Value);
+            }
+            networkRegistryRefGuids = altData.networkRegistryRefGuids;
+            meshVariEntry = altData.meshVariEntry != null ? altData.meshVariEntry : meshVariEntry;
+            bundleReferences = altData.bundleReferences;
+        }
     }
     [EbxClassMeta(EbxFieldType.Struct)]
     public class AutoBundleManagerDependenciesCacheInterpruter
@@ -526,7 +541,8 @@ namespace AutoBundleManagerPlugin
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencySavedData> dependencies = new Dictionary<Sha1, DependencySavedData>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
-        
+        private static Dictionary<AssetEntry, Sha1> sha1Overrides = new Dictionary<AssetEntry, Sha1>();
+
         public static bool HasSha1(Sha1 sha1)
         {
             return dependencies.ContainsKey(sha1);
@@ -568,9 +584,8 @@ namespace AutoBundleManagerPlugin
             else
                 dependencies.Add(sha1, new DependencySavedData(resEntry.Name, new Guid(), true, new HashSet<string>(), new HashSet<Guid>(), new HashSet<ulong>(), new Dictionary<Guid, int>(), new HashSet<Guid>(), null, new Dictionary<string, HashSet<string>>()));
         }
-        private static DependencySavedData GetRawDependencies(AssetEntry parEntry, bool getResDependencies = true)
+        private static DependencySavedData GetRawDependencies(Sha1 sha1, AssetEntry parEntry, bool getResDependencies = true)
         {
-            Sha1 sha1 = parEntry.GetSha1();
             if (!dependencies.ContainsKey(sha1))
             {
                 cacheNeedsUpdating = true;
@@ -588,7 +603,7 @@ namespace AutoBundleManagerPlugin
                 ResAssetEntry resEntry = App.AssetManager.GetResEntry(resRid);
                 if (resEntry != null && resLoggerExtensions.ContainsKey((ResourceType)resEntry.ResType))
                 {
-                    DependencySavedData resDependencies = GetRawDependencies(resEntry, true);
+                    DependencySavedData resDependencies = sha1Overrides.ContainsKey(resEntry) ? GetRawDependencies(sha1Overrides[resEntry], resEntry, true) : GetRawDependencies(resEntry, true);
 
                     foreach (Guid ebxGuid in resDependencies.ebxGuids)
                         dependencyData.ebxGuids.Add(ebxGuid);
@@ -630,9 +645,32 @@ namespace AutoBundleManagerPlugin
 
             return dependencyData;
         }
+        private static DependencySavedData GetRawDependencies(AssetEntry parEntry, bool getResDependencies = true)
+        {
+            Sha1 sha1 = parEntry.GetSha1();
+            return GetRawDependencies(sha1, parEntry, getResDependencies);
+        }
         public static DependencyActiveData GetDependencies(AssetEntry parEntry)
         {
             return new DependencyActiveData(GetRawDependencies(parEntry));
+        }
+        public static DependencyActiveData GetDependencies(AssetEntry parEntry, Sha1 overrideSha1)
+        {
+            return new DependencyActiveData(GetRawDependencies(overrideSha1, parEntry, true));
+        }
+        public static void AddSha1Overrides(Dictionary<AssetEntry, Sha1> newOverrides)
+        {
+            foreach(KeyValuePair<AssetEntry, Sha1> pair in newOverrides)
+            {
+                if (sha1Overrides.ContainsKey(pair.Key))
+                    sha1Overrides[pair.Key] = pair.Value;
+                else
+                    sha1Overrides.Add(pair.Key, pair.Value);
+            }
+        }
+        public static void ClearSha1Overrides()
+        {
+            sha1Overrides.Clear();
         }
         public static Dictionary<Sha1, DependencyActiveData> GetAllCachedDependencies()
         {

@@ -1,4 +1,5 @@
 ﻿using AutoBundleManagerPlugin;
+using AutoBundleManagerPlugin.Logic.Operations;
 using Frosty.Core.Attributes;
 using FrostySdk;
 using System.Reflection;
@@ -32,6 +33,7 @@ using System.Windows;
 
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmOptionsMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerCompleteBundlesBundlesMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerClearBundlesBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheBundleHierarchyMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheNetworkRegistriesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheMeshVariationDatabasesMenuExtension))]
@@ -41,3 +43,4 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestSublevelsParentMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestChunkFirstMipH32MenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmDependenciesToXmlMenuExtension))]
+[assembly: RegisterExportAction(typeof(BundleManagerLaunchExportOverride), ExportType.ExportOnly, 15)]

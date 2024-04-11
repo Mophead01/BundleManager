@@ -1,6 +1,7 @@
 ﻿using Frosty.Core;
 using Frosty.Core.IO;
 using Frosty.Core.Mod;
+using Frosty.Core.Windows;
 using Frosty.Hash;
 using FrostySdk;
 using FrostySdk.IO;
@@ -42,7 +43,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         private static List<string> swbf2GameplayHandlerTypes = new List<string> { "WSTeamData" };
 
         private List<ParsedCustomBundle> ParsedBundles = new List<ParsedCustomBundle>();
-        private List<ParsedModifiedEbx> ParsedEbx = new List<ParsedModifiedEbx>();
+        public List<ParsedModifiedEbx> ParsedEbx = new List<ParsedModifiedEbx>();
         private List<ParsedModifiedRes> ParsedRes = new List<ParsedModifiedRes>();
         private List<ParsedModifiedChunk> ParsedChunks = new List<ParsedModifiedChunk>();
         private class ParsedCustomBundle
@@ -74,7 +75,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 SuperBundleId = reader.ReadInt();
             }
         }
-        private class ParsedModifiedEbx
+        public class ParsedModifiedEbx
         {
             public string Name;
 
@@ -360,13 +361,14 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 }
             }
         }
-        public bool TryReadCache(string cacheFullPath, string checksum)
+        public bool TryReadCache(string cacheFullPath, string checksum, FrostyTaskWindow task, string fbmodShortName)
         {
             if (!File.Exists(cacheFullPath))
                 return false;
 
             using (NativeReader reader = new NativeReader(new FileStream(cacheFullPath, FileMode.Open, FileAccess.Read)))
             {
+                task.Update($"ABM: Loading {fbmodShortName}");
                 if (reader.ReadNullTerminatedString() != "MopMagicFbmodCac" || reader.ReadInt() != cacheVersion)
                     return false;
                 if (reader.ReadNullTerminatedString() != checksum)
@@ -405,7 +407,16 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 App.Logger.LogWarning($"{resource.Name}\t{bunHash}");
             return new HashSet<string>(resource.AddedBundles.Where(bunHash => adaptiveBundleHashesToIds.ContainsKey(bunHash)).Select(bunHash => adaptiveBundleHashesToIds[bunHash]).ToList());
         }
-        public FbmodParsing(string fbmodFullPath)
+        public Dictionary<AssetEntry, Sha1> GetModifiedSha1s()
+        {
+            Dictionary<AssetEntry, Sha1> modifiedSha1s = new Dictionary<AssetEntry, Sha1>();
+            foreach (ParsedModifiedEbx parsedEbx in ParsedEbx.Where(parsedEbx => parsedEbx.ContainsModifiedData))
+                modifiedSha1s.Add(App.AssetManager.GetEbxEntry(parsedEbx.Name), parsedEbx.Hash);
+            foreach (ParsedModifiedRes parsedRes in ParsedRes.Where(parsedRes => parsedRes.ContainsModifiedData))
+                modifiedSha1s.Add(App.AssetManager.GetResEntry(parsedRes.Name), parsedRes.Hash);
+            return modifiedSha1s;
+        }
+        public FbmodParsing(string fbmodFullPath, FrostyTaskWindow task)
         {
             string checksum = CalculateChecksum(fbmodFullPath, new SHA256Managed());
             string fbmodShortName = fbmodFullPath.Split('/').Last();
@@ -413,7 +424,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             //App.Logger.Log(fbmodShortName);
             //App.Logger.Log(cacheFullPath);
 
-            bool parseFbmod = !TryReadCache(cacheFullPath, checksum);
+            bool parseFbmod = !TryReadCache(cacheFullPath, checksum, task, fbmodShortName);
 
 
             //App.Logger.Log("SHA256 Checksum: " + checksum);
@@ -421,6 +432,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 
             if (parseFbmod)
             {
+                task.Update($"ABM: Caching {fbmodShortName}");
                 adaptiveBundleHashesToIds = new Dictionary<int, string>(bundleHashesToNames);
                 ParsedBundles.Clear();
                 ParsedEbx.Clear();

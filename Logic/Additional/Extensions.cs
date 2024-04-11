@@ -194,6 +194,19 @@ namespace AutoBundleManagerPlugin
                 }
             });
         }
+        public static void SequentialForeach<T>(this FrostyTaskWindow task, string taskName, IEnumerable<T> source, Action<T, int> body)
+        {
+            task.Update(taskName);
+            int itemCount = source.Count();
+            int progress = 0;
+
+            foreach (var item in source)
+            {
+                body(item, ++progress);
+                float currentProgress = (float)progress / itemCount * 100;
+                task.Update(progress: currentProgress);
+            }
+        }
         public static bool IsInBundleHeap(this AssetEntry assetEntry, int bunId, List<int> parentIds)
         {
             if (assetEntry.IsInBundle(bunId))
@@ -206,7 +219,7 @@ namespace AutoBundleManagerPlugin
 
         public static Sha1 GetSha1(this AssetEntry parEntry)
         {
-            if (parEntry.HasModifiedData)
+            if (parEntry.ModifiedEntry != null && parEntry.ModifiedEntry.Sha1 != Sha1.Zero)
                 return parEntry.ModifiedEntry.Sha1;
             return parEntry.Sha1;
         }
