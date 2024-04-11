@@ -406,6 +406,31 @@ namespace AutoBundleManagerPlugin
                 foreach (string ebxType in ebxTypesWithChunksThatWerentDiscovered)
                     App.Logger.Log(ebxType);
             }
+
+            //Export all bundle edits to a csv, so that they may be compared with bundle edits from the previous bundle manager.
+            public void ExportBundleEdits(string filePath)
+            {
+                using (StreamWriter writer = new StreamWriter(filePath))
+                {
+                    writer.WriteLine("Type, Asset, Bundle, FirstMip, H32");
+                    foreach (EbxAssetEntry parEntry in App.AssetManager.EnumerateEbx())
+                    {
+                        foreach (int bunId in parEntry.AddedBundles)
+                            writer.WriteLine(parEntry.AssetType, parEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, "", "");
+                    }
+                    foreach (ResAssetEntry resEntry in App.AssetManager.EnumerateRes())
+                    {
+                        foreach (int bunId in resEntry.AddedBundles)
+                            writer.WriteLine(resEntry.AssetType, resEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, "", "");
+                    }
+                    foreach (ChunkAssetEntry chkEntry in App.AssetManager.EnumerateChunks())
+                    {
+                        foreach (int bunId in chkEntry.AddedBundles)
+                            writer.WriteLine(chkEntry.AssetType, chkEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, chkEntry.FirstMip, chkEntry.H32);
+                    }
+                    //Export Net Reg + MVDB
+                }
+            }
         }
     }
 }

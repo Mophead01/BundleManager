@@ -18,7 +18,22 @@ namespace AutoBundleManagerPlugin
 {
     public static class AutoBundleManagerOptions
     {
+        //
+        //  Base Options
+        //
+        public static bool LaunchKmm { get { return Config.Get("ABM_LaunchKmm", true, ConfigScope.Game); } set { Config.Add("ABM_LaunchKmm", value, ConfigScope.Game); } }
+        public static bool LaunchFrosty { get { return Config.Get("ABM_LaunchFrosty", true, ConfigScope.Game); } set { Config.Add("ABM_LaunchFrosty", value, ConfigScope.Game); } }
+        public static bool ModExport { get { return Config.Get("ABM_ModExport", true, ConfigScope.Game); } set { Config.Add("ABM_ModExport", value, ConfigScope.Game); } }
+        public static bool CompleteNetworkRegistries { get { return Config.Get("ABM_CompleteNetworkRegistries", true, ConfigScope.Game); } set { Config.Add("ABM_CompleteNetworkRegistries", value, ConfigScope.Game); } }
+        public static bool ProcessLoadOrder { get { return Config.Get("ABM_ProcessLoadOrder", true, ConfigScope.Game); } set { Config.Add("ABM_ProcessLoadOrder", value, ConfigScope.Game); } }
+        public static bool ExportLogs { get { return Config.Get("ABM_ExportLogs", true, ConfigScope.Game); } set { Config.Add("ABM_ExportLogs", value, ConfigScope.Game); } }
+
+        // 
+        // Advanced Options
+        //
+        public static bool OptimiseBundles { get { return Config.Get("ABM_OptimiseBundles", true, ConfigScope.Game); } set { Config.Add("ABM_OptimiseBundles", value, ConfigScope.Game); } }
         public static bool CompleteMeshVariations { get { return Config.Get("ABM_CompleteMeshVariationDbs", true, ConfigScope.Game); } set { Config.Add("ABM_CompleteMeshVariationDbs", value, ConfigScope.Game); } }
+        public static bool EnableForcedBundleEdits { get { return Config.Get("ABM_EnableForcedBundleEdits", true, ConfigScope.Game); } set { Config.Add("ABM_EnableForcedBundleEdits", value, ConfigScope.Game); } }
         public static Dictionary<string, List<string>> ForcedBundleEdits
         {
             get
@@ -55,6 +70,7 @@ namespace AutoBundleManagerPlugin
                 Config.Add("ABM_ForcedBundleEdits", string.Join("$", value.ToList().Select(pair => $"{pair.Key}:{string.Join("£", pair.Value)}")), ConfigScope.Game);
             }
         }
+        public static bool EnableForcedBundleTransfers { get { return Config.Get("ABM_EnableForcedBundleTransfers", true, ConfigScope.Game); } set { Config.Add("ABM_EnableForcedBundleTransfers", value, ConfigScope.Game); } }
         public static Dictionary<string, List<string>> ForcedBundleTransfers
         {
             get

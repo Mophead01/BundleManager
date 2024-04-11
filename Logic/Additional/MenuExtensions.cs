@@ -273,15 +273,73 @@ namespace AutoBundleManagerPlugin
     }
     public class AutoBundleManagerOptionsGrid
     {
+
+        //
+        //  Base Options
+        //
+
         [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Enable on KMM Launch")]
+        [Description("Enabling will allow the BM to automatically run when launching through KMM.")]
+        public bool LaunchKmm { get { return AutoBundleManagerOptions.LaunchKmm; } set { AutoBundleManagerOptions.LaunchKmm = value; } }
+
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Enable on Frosty Launch")]
+        [Description("Enabling will allow the BM to automatically run when launching through Frosty.")]
+        public bool ExportKmm { get { return AutoBundleManagerOptions.LaunchFrosty; } set { AutoBundleManagerOptions.LaunchFrosty = value; } }
+
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Enable on Module Export")]
+        [Description("Enabling will allow the BM to automatically run when exporting the module.")]
+        public bool ModExport { get { return AutoBundleManagerOptions.ModExport; } set { AutoBundleManagerOptions.ModExport = value; } }
+
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Is Cosmetic Module")]
+        [Description("Enabling prevents the Bundle Manager from making bundle changes to server networked assets, which would cause desynchronisation issues when run online. Please do not have this option enabled if you are making a gameplay modification.")]
+        public bool IsCosmeticModule { get { return !AutoBundleManagerOptions.CompleteNetworkRegistries; } set { AutoBundleManagerOptions.CompleteNetworkRegistries = !value; } }
+
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("KMM Launch - Process Load Order")]
+        [Description("Enabling will allow the BM to process then mod load order when running through KMM, automatically making the mods compatible.")]
+        public bool ProcessLoadOrder { get { return AutoBundleManagerOptions.ProcessLoadOrder; } set { AutoBundleManagerOptions.ProcessLoadOrder = value; } }
+
+        [Category("Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Export Logs")]
+        [Description("Enabling allows the BM to export a log of all the changes made to your project file while running, this can help identify problems with the operation but does slow the BM down")]
+        public bool ExportLogs { get { return AutoBundleManagerOptions.ExportLogs; } set { AutoBundleManagerOptions.ExportLogs = value; } }
+
+        // 
+        // Advanced Options
+        //
+
+        [Category("Advanced Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("KMM Launch - Optimise Bundles")]
+        [Description("Enabling will make it so that when launching through KMM, the BM will only complete bundles for Frontend and the level you are going to go into.")]
+        public bool OptimiseBundles { get { return AutoBundleManagerOptions.OptimiseBundles; } set { AutoBundleManagerOptions.OptimiseBundles = value; } }
+
+        [Category("Advanced Options")]
         [EbxFieldMeta(EbxFieldType.Boolean)]
         [DisplayName("Complete MeshVariationDBs")]
         [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
         public bool CompleteMeshVariations { get { return AutoBundleManagerOptions.CompleteMeshVariations; } set { AutoBundleManagerOptions.CompleteMeshVariations = value; } }
-        [Category("Options")]
+
+        [Category("Advanced Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Enable Forced Bundle Edits")]
+        [Description("Disabling prevents the Bundle Manager from forcing certain assets to be loaded on assigned bundles.")]
+        public bool EnableForcedBundleEdits { get { return AutoBundleManagerOptions.EnableForcedBundleEdits; } set { AutoBundleManagerOptions.EnableForcedBundleEdits = value; } }
+
+        [Category("Advanced Options")]
         [EbxFieldMeta(EbxFieldType.Array)]
         [DisplayName("Forced Bundle Edits")]
-        [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
+        [Description("A list of ebx/res assets to forcibly add to a bundle")]
         public List<ForcedBundleEditsViewer> ForcedBundleEdits
         {
             get
@@ -292,10 +350,17 @@ namespace AutoBundleManagerPlugin
             {
             }
         }
-        [Category("Options")]
+
+        [Category("Advanced Options")]
+        [EbxFieldMeta(EbxFieldType.Boolean)]
+        [DisplayName("Enable Forced Bundle Transfers")]
+        [Description("Disabling prevents the Bundle Manager from forcibly transferring assets from one bundle to another.")]
+        public bool EnableForcedBundleTransfers { get { return AutoBundleManagerOptions.EnableForcedBundleTransfers; } set { AutoBundleManagerOptions.EnableForcedBundleTransfers = value; } }
+
+        [Category("Advanced Options")]
         [EbxFieldMeta(EbxFieldType.Array)]
         [DisplayName("Forced Bundle Transfers")]
-        [Description("Disabling prevents the Bundle Manager from making bundle changes to mesh variation databases")]
+        [Description("A list of bundles which the bundle manager should forcibly copy assets between.")]
         public List<ForcedBundleTransfersViewer> ForcedBundleTransfers
         {
             get

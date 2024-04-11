@@ -39,7 +39,7 @@ namespace AutoBundleManagerPlugin
         private StringBuilder LogList = new StringBuilder();
 
         /// <summary>
-        /// Adds string lines to the ABM log, so that they may be added to the generated csv fi;e
+        /// Adds string lines to the ABM log, so that they may be added to the generated csv file
         /// </summary>
         /// <param name="type">High level categorisation of the action being taken.</param>
         /// <param name="description">More detailed explanation of the action being taken.</param>
@@ -49,6 +49,83 @@ namespace AutoBundleManagerPlugin
         {
             LogList.AppendLine(type + ", \t" + description + ", \t" + parent + ", \t" + child + ", \t" + (stopWatch.ElapsedMilliseconds - lastTimestamp).ToString());
             lastTimestamp = stopWatch.ElapsedMilliseconds;
+        }
+
+        /// <summary>
+        /// Reused code from the duplication plugin which allows the BM to add a new asset created from scratch.
+        /// </summary>
+        /// <param name="name">The name of the new asset.</param>
+        /// <param name="type">The type of the new asset.</param>
+        /// <param name="bunId">The bundle which the asset belongs to.</param>
+        /// <param name="taskType">The first column value to print to the csv log.</param>
+        private (EbxAssetEntry, EbxAsset) CreateAsset(string name, string type, int bunId, string taskType) 
+        {
+            EbxAssetEntry newEntry = App.AssetManager.GetEbxEntry(name);
+            //Revert if there is an imaginary asset
+            if (newEntry != null)
+                App.AssetManager.RevertAsset(newEntry);
+
+            EbxAsset newAsset = new EbxAsset(TypeLibrary.CreateObject(name));
+            newAsset.SetFileGuid(Guid.NewGuid());
+
+            dynamic obj = newAsset.RootObject;
+            obj.Name = name;
+
+            AssetClassGuid guid = new AssetClassGuid(Utils.GenerateDeterministicGuid(newAsset.Objects, (Type)obj.GetType(), newAsset.FileGuid), -1);
+            obj.SetInstanceGuid(guid);
+
+            newEntry = App.AssetManager.AddEbx(name, newAsset);
+            if (newEntry.ModifiedEntry == null) //Super rare issue with the old bundle manager, can't remember the cause but probably had something to do with handlers
+                throw new Exception($"App.AssetManager.AddEbx() failed to create new {type} EbxAsset for bundle: {App.AssetManager.GetBundleEntry(bunId).Name}\nUnknown cause and how to fix");
+
+            newEntry.AddedBundles.Add(bunId);
+            newEntry.ModifiedEntry.DependentAssets.AddRange(newAsset.Dependencies);
+            
+            AddToLog(taskType, $"Creating {taskType}", name, App.AssetManager.GetBundleEntry(bunId).Name);
+            return (newEntry, App.AssetManager.GetEbx(newEntry));
+        }
+
+        /// <summary>
+        /// Gets the MeshVariationDatabase for a bundle, if none exists then it creates an empty one.
+        /// </summary>
+        /// <param name="bunId">The bundle in question.</param>
+        /// <param name="taskType">The first column value to print to the csv log.</param>
+        private (EbxAssetEntry, EbxAsset) GetMeshVariationDB(int bunId, string taskType) 
+        {
+            string mvdbName = App.AssetManager.GetBundleEntry(bunId).Name.ToLower().Substring(6) + "/MeshVariationDb_Win32";
+            EbxAssetEntry mvdbEntry = App.AssetManager.GetEbxEntry(mvdbName);
+
+            //Check if the MVDB already exists and is not imaginary - if it doesn't then create a new MVDB for this bundle.
+            if (mvdbEntry == null || mvdbEntry.IsImaginary)
+                return CreateAsset(mvdbName, "MeshVariationDatabase", bunId, taskType);
+            else
+                return (mvdbEntry, App.AssetManager.GetEbx(mvdbEntry));
+        }
+
+        /// <summary>
+        /// Gets the NetworkRegistry for a bundle, if none exists then it creates an empty one.
+        /// </summary>
+        /// <param name="bunId">The bundle in question.</param>
+        /// <param name="taskType">The first column value to print to the csv log.</param>
+        private (EbxAssetEntry, EbxAsset) GetNetworkRegistry(int bunId, string taskType) 
+        {
+            string netName = App.AssetManager.GetBundleEntry(bunId).Name.ToLower().Substring(6) + "_networkregistry_Win32";
+            EbxAssetEntry netEntry = App.AssetManager.GetEbxEntry(netName);
+
+            //Check if the MVDB already exists and is not imaginary - if it doesn't then create a new MVDB for this bundle.
+            if (netEntry == null || netEntry.IsImaginary)
+                return CreateAsset(netName, "NetworkRegistryAsset", bunId, taskType);
+            else
+                return (netEntry, App.AssetManager.GetEbx(netEntry));
+        }
+
+        /// <summary>
+        /// Finds out if a bundle is a bpb. Some older project files used a dupe plugin which accidently duped bpbs into sublevels, so we need to check the name of the bundle to determine if it is really a sublevel or a bpb.
+        /// </summary>
+        /// <param name="bEntry">The bundle entry to check.</param>
+        private bool IsBpb(BundleEntry bEntry) 
+        {
+            return bEntry.Type == BundleType.BlueprintBundle || bEntry.Name.ToLower().EndsWith("_bpb");
         }
 
         /// <summary>
@@ -93,12 +170,27 @@ namespace AutoBundleManagerPlugin
             /// We store this, rather than figuring it through App.AssetManager, because other fbmods in the load order may have asset edits which override the changes made by the project file, changes we should respect.
             /// </summary>
             Dictionary<EbxAssetEntry, DependencyActiveData> loggedDependencies = new Dictionary<EbxAssetEntry, DependencyActiveData>();
+
+            //We use this to store a list of assets which get merged by custom handlers. This is important because we don't want dependencies from one mod to override the other, so we merge the dependencies together when we see an asset in this list
             List<EbxAssetEntry> mergedAssets = new List<EbxAssetEntry>();
 
-            void UpdatedLoggedDependencies(EbxAssetEntry parEntry, DependencyActiveData dependencies, bool isHandlerAsset = false)
+            //Some assets added to bundles by some mods, may have had their assets updated by a different one. Therefore we use this dictionary to keep track of this so that we can letter tell the BM to update the Network Registries/MVDBs of those bundles to include these assets.
+            Dictionary<EbxAssetEntry, List<int>> assetsToUpdateDatabases = new Dictionary<EbxAssetEntry, List<int>>();
+            
+            /// <summary>
+            /// Function used to update the loggedDependencies Dictionary, and keep track of mergable assets and bundle databases from other load orders which need updating.
+            /// </summary>
+            /// <param name="parEntry">The ebx asset in question.</param>
+            /// <param name="dependencies">The detected dependencies of the asset from a loaded fbmod or the main project file.</param>
+            /// <param name="isHandlerAsset">If the asset in question comes from a handler, and therefore needs its asset dependency lists to be merged with ones from previously loaded mods.</param>
+            /// <param name="newlyAddedBundles">List of bundles which the target mod has added the asset to, this can be used to figure out bundles which have databases that need updating.</param>
+            void UpdatedLoggedDependencies(EbxAssetEntry parEntry, DependencyActiveData dependencies, bool isHandlerAsset, List<int> newlyAddedBundles)
             {
                 if (isHandlerAsset && !mergedAssets.Contains(parEntry))
                     mergedAssets.Add(parEntry);
+
+                if (assetsToUpdateDatabases.ContainsKey(parEntry))
+                    assetsToUpdateDatabases.Remove(parEntry);
 
                 string dependencyTxt = $" \t{dependencies.ebxRefs.Count()} Ebx Refs$ \t{dependencies.resRefs.Count()} Res Refs$ \t{dependencies.chkRefs.Count()} Chunks Refs$ \t{dependencies.bundleReferences.Count()} Bundle Refs$ \t{dependencies.networkRegistryRefGuids.Count()} Net Reg Refs$ \t{(dependencies.meshVariEntry == null ? "No MeshVariation" : "Includes MeshVariation")}";
                 if (loggedDependencies.ContainsKey(parEntry))
@@ -106,7 +198,7 @@ namespace AutoBundleManagerPlugin
                     if (mergedAssets.Contains(parEntry))
                     {
                         loggedDependencies[parEntry].AppendData(dependencies);
-                        AddToLog("Caching", "Overriding Data", parEntry.Name, dependencyTxt);
+                        AddToLog("Caching", "Merging Data", parEntry.Name, dependencyTxt);
                     }
                     else
                     {
@@ -118,6 +210,17 @@ namespace AutoBundleManagerPlugin
                 {
                     loggedDependencies.Add(parEntry, dependencies);
                     AddToLog("Caching", "Logging Data", parEntry.Name, dependencyTxt);
+                }
+
+
+                if (assetsToUpdateDatabases.ContainsKey(parEntry))
+                    assetsToUpdateDatabases.Remove(parEntry);
+
+                List<int> bundleDatabasesToUpdate = parEntry.AddedBundles.Except(newlyAddedBundles).ToList();
+                if (bundleDatabasesToUpdate.Count() > 0) 
+                {
+                    assetsToUpdateDatabases.Add(parEntry, bundleDatabasesToUpdate);
+                    AddToLog("Caching", "Listing Bundle Databases To Update", parEntry.Name, string.Join(" $ ", bundleDatabasesToUpdate.Select(bunId => App.AssetManager.GetBundleEntry(bunId).Name)));
                 }
             }
 
@@ -136,7 +239,7 @@ namespace AutoBundleManagerPlugin
                         EbxAssetEntry parEntry = App.AssetManager.GetEbxEntry(modifiedEbx.Name);
 
                         DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry, modifiedEbx.Hash);
-                        UpdatedLoggedDependencies(parEntry, dependencies, modifiedEbx.HasHandler);
+                        UpdatedLoggedDependencies(parEntry, dependencies, modifiedEbx.HasHandler, modifiedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList());
                     }
                 }
                 else
@@ -150,7 +253,7 @@ namespace AutoBundleManagerPlugin
                         AddToLog("Caching", "Getting Dependencies", parEntry.Name, parEntry.GetSha1().ToString());
                         DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry);
 
-                        UpdatedLoggedDependencies(parEntry, dependencies, App.PluginManager.GetCustomHandler((uint)Utils.HashString(parEntry.Type, true)) != null);
+                        UpdatedLoggedDependencies(parEntry, dependencies, App.PluginManager.GetCustomHandler((uint)Utils.HashString(parEntry.Type, true)) != null, new List<int>());
                     }
                 }
             });
@@ -172,10 +275,7 @@ namespace AutoBundleManagerPlugin
             // Enumerating over all added bundles
             foreach (BundleEntry bEntry in App.AssetManager.EnumerateBundles().Where(bEntry => bEntry.Added))
             {
-                // Some older project files used a dupe plugin which accidently duped bpbs into sublevels, so we need to check the name of the bundle to determine if it is really a sublevel or a bpb.
-                bool isBpb = bEntry.Type == BundleType.BlueprintBundle || bEntry.Name.ToLower().EndsWith("_bpb");
-
-                if (isBpb)
+                if (IsBpb(bEntry))
                 {
                     if (bEntry.Name.StartsWith("Win32/weapons/"))
                         new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>() { App.AssetManager.GetBundleId("win32/gameplay/bundles/sharedbundles/common/weapons/sharedbundleweapons_common") });
@@ -192,7 +292,7 @@ namespace AutoBundleManagerPlugin
             }
 
             #endregion
-
+            
             #region Forcibly Transferring Edits Between Different Bundles
             /*
                 This is an inelegant hacky solution which is necessary to get certain sublevel duplications working.
@@ -230,25 +330,71 @@ namespace AutoBundleManagerPlugin
                                 {
                                     switch (refEntry.Type)
                                     {
-                                        case "NetworkRegistryAsset": //TO BE DONE - FIND A WAY TO MERGE NET REGS IF MORE THAN ONE SOURCE BUNDLE IS BEING TRANSFERRED --- ALSO FIGURE OUT A WAY TO ACKNOWLEDGE EDITS MADE TO THE NET REG REFERENCES FOR EBX ASSETS
-                                            //if (!BlockNetworkRegistries)
-                                            //{
-                                            //    //EbxAssetEntry netEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.ToLower().Substring(6) + "_networkregistry_Win32", false, null);
-                                            //    //netEntry.AddedBundles.Clear();
-                                            //    //netEntry.AddToBundle(newBunId);
-                                            //    //LogString(netEntry.AssetType, "Duplicating original network registry", netEntry.Name, App.AssetManager.GetBundleEntry(newBunId).Name);
-                                            //}
-                                            break;
-                                        case "MeshVariationDatabase": //TO BE DONE - FIND A WAY TO MERGE MVDBS IF MORE THAN ONE SOURCE BUNDLE IS BEING TRANSFERRED --- ALSO FIGURE OUT A WAY TO ACKNOWLEDGE EDITS MADE TO THE MVDB FOR EBX ASSETS
-                                            //EbxAssetEntry mvEntry = new DuplicateAssetExtension().DuplicateAsset((EbxAssetEntry)refEntry, bEntry.Name.Replace("win32/", "") + "/MeshVariationDb_Win32", false, null);
-                                            //mvEntry.AddedBundles.Clear();
-                                            //mvEntry.AddToBundle(newBunId);
-                                            //LogString(mvEntry.AssetType, "Duplicating original meshvariationdb", mvEntry.Name, App.AssetManager.GetBundleEntry(newBunId).Name);
-                                            break;
+                                        case "NetworkRegistryAsset":
+                                            {
+                                                if (!(AutoBundleManagerOptions.CompleteNetworkRegistries && !IsBpb(App.AssetManager.GetBundleEntry(targBunId))))
+                                                    break;
+                                                var (netregEntry, netregAsset) = GetNetworkRegistry(targBunId, "Bundle Transfer");
+                                                dynamic netregRoot = netregAsset.RootObject;
+                                                List<PointerRef> existingReferences = new List<PointerRef>(netregRoot.Objects);
+
+                                                int addedReferences = 0;
+                                                int totalReferences = 0;
+                                                foreach (PointerRef pr in ((dynamic)App.AssetManager.GetEbx(refEntry as EbxAssetEntry).RootObject).Objects)
+                                                {
+                                                    totalReferences++;
+                                                    if (!existingReferences.Contains(pr))
+                                                    {
+                                                        netregRoot.Objects.Add(new PointerRef(new EbxImportReference() { FileGuid = pr.External.FileGuid, ClassGuid = pr.External.ClassGuid }));
+                                                        addedReferences++;
+                                                    }
+                                                }
+
+                                                AddToLog("Bundle Transfer", "Adding NetworkRegistry PointerRefs Entries", netregEntry.Name, $"{addedReferences}/{totalReferences}");
+                                                App.AssetManager.ModifyEbx(netregEntry.Name, netregAsset);
+                                                break;
+                                            }                                            
+                                        case "MeshVariationDatabase": //TO BE DONE - FIND A WAY TO MERGE MVDBS IF MORE THAN ONE SOURCE BUNDLE IS BEING TRANSFERRED --- ALSO FIGURE OUT A WAY TO ACKNOWLEDGE EDITS MADE TO THE MVDB FOR EBX ASSETS 
+                                            {
+                                                if (!AutoBundleManagerOptions.CompleteMeshVariations)
+                                                    break;
+
+                                                var (mvdbEntry, mvdbAsset) = GetMeshVariationDB(targBunId, "Bundle Transfer");
+                                                List<(PointerRef, uint)> existingMeshVariations = new List<(PointerRef, uint)>(); // ((dynamic)mvdbAsset.RootObject).Entries.Select(entry => ((dynamic)entry.Mesh, (dynamic)entry.VariationAssetNameHash)).ToList();
+                                                foreach (dynamic entry in ((dynamic)mvdbAsset.RootObject).Entries)
+                                                    existingMeshVariations.Add(((dynamic)entry.Mesh, (dynamic)entry.VariationAssetNameHash));
+
+                                                int addedReferences = 0;
+                                                int totalReferences = 0;
+                                                dynamic mvdbRoot = ((dynamic)mvdbAsset.RootObject);
+                                                foreach (dynamic entry in ((dynamic)App.AssetManager.GetEbx(refEntry as EbxAssetEntry).RootObject).Entries)
+                                                {
+                                                    totalReferences++;
+                                                    (PointerRef, uint) entryId = (entry.Mesh, entry.VariationAssetNameHash);
+                                                    if (!existingMeshVariations.Contains(entryId))
+                                                    {
+                                                        mvdbRoot.Entries.Add((new AbmMeshVariationDatabaseEntry(entry)).WriteToGameEntry());
+                                                        addedReferences++;
+                                                    }
+                                                };
+
+                                                AddToLog("Bundle Transfer", "Adding MeshVariationDatabase Entries", mvdbEntry.Name, $"{addedReferences}/{totalReferences}");
+
+                                                App.AssetManager.ModifyEbx(mvdbEntry.Name, mvdbAsset);
+                                                break;
+                                            }
                                         default:
                                             if (refEntry.IsInBundle(targBunId))
                                                 continue;
                                             refEntry.AddToBundle(targBunId);
+                                            if (refEntry.AssetType == "ebx" && loggedDependencies.ContainsKey((EbxAssetEntry)refEntry) && refEntry.IsAdded) 
+                                            {
+                                                EbxAssetEntry refEbx = refEntry as EbxAssetEntry;
+                                                if (!assetsToUpdateDatabases.ContainsKey(refEbx))
+                                                    assetsToUpdateDatabases.Add(refEbx, new List<int> {targBunId});
+                                                else if (!assetsToUpdateDatabases[refEbx].Contains(targBunId))
+                                                    assetsToUpdateDatabases[refEbx].Add(targBunId);
+                                            }
                                             AddToLog("Bundle Transfer", $"Transfer {refEntry.AssetType} to bundle", refEntry.Name, $"{sourceBunName} - {targBunName}");
                                             break;
                                     }
@@ -313,9 +459,6 @@ namespace AutoBundleManagerPlugin
                         BundleHeapEntry heapEntry = AbmBundleHeap.Bundles[bunId];
                         BundleEntry bEntry = App.AssetManager.GetBundleEntry(bunId);
 
-                        //Some older project files used a dupe plugin which accidently duped bpbs into sublevels, so we need to check the name of the bundle to determine if it is really a sublevel or a bpb.
-                        bool isBpb = bEntry.Type == BundleType.BlueprintBundle || bEntry.Name.ToLower().EndsWith("_bpb");
-
                         //Function used for adding a bundle parent to the target bundle heap entry, assuming it is not already a parent and actually exists.
                         void TryAddParent(string bunName)
                         {
@@ -332,7 +475,7 @@ namespace AutoBundleManagerPlugin
                             TryAddParent("win32/" + bunParStr);
 
                         //Sublevels do not declare their parents through the ebx, but it can be derived by simply looking at the bundles used by the asset which makes the reference to a child bundle
-                        if (!isBpb && sublevelEbxTypes.Contains(parEntry.Type))
+                        if (!IsBpb(bEntry) && sublevelEbxTypes.Contains(parEntry.Type))
                         {
                             TryAddParent("win32/" + parEntry.Name);
                             foreach (int bunParId in parEntry.EnumerateBundles())
@@ -462,7 +605,7 @@ namespace AutoBundleManagerPlugin
                         if (addToBundle)
                         {
                             ebxEntry.AddToBundle(bunId);
-                            AddToLog("Completing Bundle", "Adding Ebx To Bundle", parEntry.Name, bunName);
+                            AddToLog("Completing Bundle", "Adding Ebx To Bundle", ebxEntry.Name, bunName);
                         }
 
                         //Enumerate over dependencies of ths ebx if we have just added it to the bundle.
@@ -522,106 +665,62 @@ namespace AutoBundleManagerPlugin
                         if (dependencies.networkRegistryRefGuids.Count() > 0)
                             AddToLog("Completing Bundle", "Adding Network Registry Objects", $"{parEntry.Name} ({dependencies.networkRegistryRefGuids.Count()})", bunName);
                     }
+                    else if (!parEntry.IsAdded) 
+                    {
+                        List<Guid> exclusionGuids = new List<Guid>();
+                        if (AbmNetworkRegistryCache.NetworkRegistryReferences.ContainsKey(parEntry.Guid))
+                            exclusionGuids = AbmNetworkRegistryCache.NetworkRegistryReferences[parEntry.Guid];
+
+                        int idx = 0;
+                        //Create a PointerRef for all the possible net reg export guids if they're not already referenced in the net reg, then add the PointerRefs to the list.
+                        foreach (Guid classGuid in dependencies.networkRegistryRefGuids.Where(guid => !exclusionGuids.Contains(guid)))
+                        {
+                            netRegPointerRefsToAdd.Add(new PointerRef(new EbxImportReference() { FileGuid = dependencies.srcGuid, ClassGuid = classGuid }));
+                            idx++;
+                        }
+
+                        if (dependencies.networkRegistryRefGuids.Count() > 0)
+                            AddToLog("Completing Bundle", "Adding Missing Network Registry Objects", $"{parEntry.Name} ({idx}/{dependencies.networkRegistryRefGuids.Count()})", bunName);
+                    }
                 }
 
                 //Enumerate Modified Assets and add  dependencies to the bundles
                 if (bundlesModifiedAssets.ContainsKey(bunId))
                 {
-                    //While enumerating make sure to set addSelfToRegistries to false, otherwise these already added ebx assets will get readded to MVDBs and Network Registries.
+                    //While enumerating make sure to set addSelfToRegistries to false unless they need database updating, otherwise these already added ebx assets will get readded to MVDBs and Network Registries.
                     foreach (EbxAssetEntry parEntry in bundlesModifiedAssets[bunId])
-                        AddDependenciesToBundle(parEntry, false);
+                    {
+                        AddToLog("Completing Bundle", "Starting Enumeration Of Ebx", parEntry.Name, loggedDependencies.ContainsKey(parEntry) ? "IsModified" : "IsUnmodified");
+                        AddDependenciesToBundle(parEntry, assetsToUpdateDatabases.ContainsKey(parEntry) && assetsToUpdateDatabases[parEntry].Contains(bunId));
+                    }
                 }
 
                 //Add MeshVariationDatabase Entries
-                if (meshVariationsToAdd.Count() > 0)
+                if (meshVariationsToAdd.Count() > 0 && AutoBundleManagerOptions.CompleteMeshVariations)
                 {
-
-                    string mvdbName = bEntry.Name.ToLower().Substring(6) + "/MeshVariationDb_Win32";
-                    EbxAssetEntry mvdbEntry = App.AssetManager.GetEbxEntry(mvdbName);
-                    EbxAsset mvdbAsset;
-
-                    //Check if the MVDB already exists and is not imaginary - if it doesn't then create a new MVDB for this bundle.
-                    if (mvdbEntry == null || mvdbEntry.IsImaginary)
-                    {
-                        //Revert if there is an imaginary asset
-                        if (mvdbEntry != null)
-                            App.AssetManager.RevertAsset(mvdbEntry);
-
-                        EbxAsset newAsset = new EbxAsset(TypeLibrary.CreateObject("MeshVariationDatabase"));
-                        newAsset.SetFileGuid(Guid.NewGuid());
-
-                        dynamic obj = newAsset.RootObject;
-                        obj.Name = mvdbName;
-
-                        AssetClassGuid guid = new AssetClassGuid(Utils.GenerateDeterministicGuid(newAsset.Objects, (Type)obj.GetType(), newAsset.FileGuid), -1);
-                        obj.SetInstanceGuid(guid);
-
-                        EbxAssetEntry newEntry = App.AssetManager.AddEbx(mvdbName, newAsset);
-                        if (newEntry.ModifiedEntry == null) //Super rare issue with the old bundle manager, can't remember the cause but probably had something to do with handlers
-                            throw new Exception(string.Format("App.AssetManager.AddEbx() failed to create new MeshVariationDatabase EbxAsset for bundle: {0}\nUnknown cause and how to fix", App.AssetManager.GetBundleEntry(bunId).Name));
-
-                        newEntry.AddedBundles.Add(bunId);
-                        newEntry.ModifiedEntry.DependentAssets.AddRange(newAsset.Dependencies);
-                        mvdbAsset = App.AssetManager.GetEbx(newEntry);
-                        AddToLog("Completing Bundle", "Creating MeshVariationDatabase", mvdbName, bunName);
-                    }
-                    else
-                        mvdbAsset = App.AssetManager.GetEbx(mvdbEntry);
-
+                    var (mvdbEntry, mvdbAsset) = GetMeshVariationDB(bunId, "Completing Bundle");
 
                     dynamic mvdbRoot = mvdbAsset.RootObject;
                     //Enumerate across every MeshVariation Entry and then write them to the game version
                     foreach (AbmMeshVariationDatabaseEntry mvEntryAbm in meshVariationsToAdd)
                         mvdbRoot.Entries.Add(mvEntryAbm.WriteToGameEntry());
 
-                    AddToLog("Completing Bundle", "Adding MeshVariationDatabase Entries", mvdbName, meshVariationsToAdd.Count().ToString());
+                    AddToLog("Completing Bundle", "Adding MeshVariationDatabase Entries", mvdbEntry.Name, meshVariationsToAdd.Count().ToString());
 
-                    App.AssetManager.ModifyEbx(mvdbName, mvdbAsset);
+                    App.AssetManager.ModifyEbx(mvdbEntry.Name, mvdbAsset);
                 }
 
                 //Add Network Registry Objects
-                if (netRegPointerRefsToAdd.Count > 0)
+                if (netRegPointerRefsToAdd.Count > 0 && AutoBundleManagerOptions.CompleteNetworkRegistries && !IsBpb(bEntry))
                 {
-
-                    string netregName = App.AssetManager.GetBundleEntry(bunId).Name.ToLower().Substring(6) + "_networkregistry_Win32";
-                    EbxAssetEntry netregEntry = App.AssetManager.GetEbxEntry(netregName);
-                    EbxAsset netregAsset;
-
-                    //Check if the Network Registry already exists and is not imaginary - if it doesn't then create a new MVDB for this bundle.
-                    if (netregEntry == null || netregEntry.IsImaginary)
-                    {
-                        //Revert if there is an imaginary asset
-                        if (netregEntry != null)
-                            App.AssetManager.RevertAsset(netregEntry);
-
-                        EbxAsset newAsset = new EbxAsset(TypeLibrary.CreateObject("NetworkRegistryAsset"));
-                        newAsset.SetFileGuid(Guid.NewGuid());
-
-                        dynamic obj = newAsset.RootObject;
-                        obj.Name = netregName;
-
-                        AssetClassGuid guid = new AssetClassGuid(Utils.GenerateDeterministicGuid(newAsset.Objects, (Type)obj.GetType(), newAsset.FileGuid), -1);
-                        obj.SetInstanceGuid(guid);
-
-                        EbxAssetEntry newEntry = App.AssetManager.AddEbx(netregName, newAsset);
-                        if (newEntry.ModifiedEntry == null)
-                            throw new Exception(string.Format("App.AssetManager.AddEbx() failed to create new NetworkRegistryAsset EbxAsset for bundle: {0}\nUnknown cause and how to fix", App.AssetManager.GetBundleEntry(bunId).Name));
-
-                        newEntry.AddedBundles.Add(bunId);
-                        newEntry.ModifiedEntry.DependentAssets.AddRange(newAsset.Dependencies);
-                        netregAsset = App.AssetManager.GetEbx(newEntry);
-                        AddToLog("Completing Bundle", "Creating NetworkRegistryAsset", netregName, bunName);
-                        //LogString("Bundle", "Adding NetworkRegistryAsset", newMeshVariName, NetworkRegistryAsset.Count.ToString() + " entries added");
-                    }
-                    else
-                        netregAsset = App.AssetManager.GetEbx(netregEntry);
+                    var (netregEntry, netregAsset) = GetNetworkRegistry(bunId, "Completing Bundle");
 
                     dynamic netregRoot = netregAsset.RootObject;
                     foreach (PointerRef pr in netRegPointerRefsToAdd)
                         netregRoot.Objects.Add(pr);
 
-                    AddToLog("Completing Bundle", "Adding NetworkRegistry PointerRefs Entries", netregName, netRegPointerRefsToAdd.Count().ToString());
-                    App.AssetManager.ModifyEbx(netregName, netregAsset);
+                    AddToLog("Completing Bundle", "Adding NetworkRegistry PointerRefs Entries", netregEntry.Name, netRegPointerRefsToAdd.Count().ToString());
+                    App.AssetManager.ModifyEbx(netregEntry.Name, netregAsset);
                 }
 
             }
@@ -686,21 +785,32 @@ namespace AutoBundleManagerPlugin
             #endregion
         }
 
+
+        /// <summary>
+        /// Cleans up the project to remove any bundle edit changes. Typically this is run after the main operation, after an fbmod has already been exported. If this works as expected, the project file should be identical to how it was before CompleteBundles was run.
+        /// </summary>
         public void ClearBundles()
         {
+            //Attaching the ebx blueprint/sublevel for every added bundle in the game.
             foreach (BundleEntry newBunEntry in App.AssetManager.EnumerateBundles().Where(blueEntry => blueEntry != null && blueEntry.Added && blueEntry.Type != BundleType.SharedBundle && blueEntry.Blueprint == null))
                 newBunEntry.Blueprint = App.AssetManager.GetEbxEntry(newBunEntry.Name.Replace("win32/", ""));
 
+            //List of all blueprint/sublevel ebx assets in the game. We want to make sure we don't clear the bundles for these assets.
             List<EbxAssetEntry> bundleBlueprints = App.AssetManager.EnumerateBundles().Select(bEntry => bEntry.Blueprint).Where(blueEntry => blueEntry != null && blueEntry.IsAdded).ToList();
-            List<EbxAssetEntry> ebxEntries = App.AssetManager.EnumerateEbx(modifiedOnly: true).ToList();
+
+            
             foreach (EbxAssetEntry refEntry in App.AssetManager.EnumerateEbx().ToList())
             {
+                //Ignore if we're dealing with an unmodified base game asset, or a bundle blueprint, so long as they're not imaginary (fake) assets.
                 if ((!refEntry.IsModified && !refEntry.IsImaginary) || (bundleBlueprints.Contains(refEntry) && !refEntry.IsImaginary))
                     continue;
+
+                //Revert all network registries, meshvariationdbs and imaginary assets.
                 if (refEntry.Type == null || refEntry.Type == "NetworkRegistryAsset" || refEntry.Type == "MeshVariationDatabase" || refEntry.IsImaginary)
                     App.AssetManager.RevertAsset(refEntry);
                 else
                 {
+                    //Clear bundles for modified assets and remove the dirty state of any assets which were not dirty before they were bundle edited.
                     refEntry.AddedBundles.Clear();
                     if (!refEntry.HasModifiedData || !refEntry.ModifiedEntry.IsDirty)
                         refEntry.IsDirty = false;
@@ -708,6 +818,7 @@ namespace AutoBundleManagerPlugin
             }
             foreach (ChunkAssetEntry chkEntry in App.AssetManager.EnumerateChunks(modifiedOnly: true).ToList())
             {
+                //Remove imaginary chunks, otherwise remove all bundle edits and reset FirstMip for base game unadded assets, and reset dirty states.
                 if (chkEntry.IsImaginary)
                     App.AssetManager.RevertAsset(chkEntry);
                 else
@@ -715,12 +826,15 @@ namespace AutoBundleManagerPlugin
                     chkEntry.AddedBundles.Clear();
                     if (!chkEntry.IsAdded)
                         chkEntry.FirstMip = -1;
+                    
+                    //Remove the dirty state of any assets which were not dirty before they were bundle edited.
                     if (!chkEntry.HasModifiedData || !chkEntry.ModifiedEntry.IsDirty)
                         chkEntry.IsDirty = false;
                 }
             }
             foreach (ResAssetEntry resEntry in App.AssetManager.EnumerateRes(modifiedOnly: true).ToList())
             {
+                //Remove imaginary chunks, otherwise remove all bundle edits and reset dirty states.
                 if (resEntry.IsImaginary)
                     App.AssetManager.RevertAsset(resEntry);
                 else
@@ -733,6 +847,7 @@ namespace AutoBundleManagerPlugin
 
             foreach(BundleEntry bEntry in App.AssetManager.EnumerateBundles().ToList())
             {
+                //Remove imaginary chunks.
                 if (bEntry.Imaginary)
                     App.AssetManager.RevertBundle(bEntry);
             }
