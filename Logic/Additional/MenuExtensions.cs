@@ -166,7 +166,8 @@ namespace AutoBundleManagerPlugin
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                AbmTestFunctions bunTest = new AbmTestFunctions(); FrostyTaskWindow.Show("", "", (task) =>
+                AbmTestFunctions bunTest = new AbmTestFunctions();
+                FrostyTaskWindow.Show("", "", (task) =>
                 {
                     bunTest.TestFirstMipH32Accuracy(task);
                 });
@@ -251,6 +252,27 @@ namespace AutoBundleManagerPlugin
                     AbmDependenciesCache.WriteToXml();
                     //AbmMeshVariationDatabasePrecache.WriteToCache(task);
                 });
+            });
+
+        }
+        public class AbmCurrentProjectToCsvMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Export: Bundle Edits to CSV";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                FrostySaveFileDialog sfd = new FrostySaveFileDialog("Save Stat Events", "*.csv (Text File)|*.csv", "StatEvents");
+                if (sfd.ShowDialog())
+                {
+                    AbmTestFunctions bunTest = new AbmTestFunctions();
+                    bunTest.ExportBundleEdits(sfd.FileName);
+                };
             });
 
         }

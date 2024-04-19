@@ -51,28 +51,30 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             public string Name;
             public BundleType Type;
             public int SuperBundleId;
-            public void WriteToCache(FbmodParsing parser, NativeWriter writer)
+            public void WriteToCache(NativeWriter writer)
             {
                 writer.WriteNullTerminatedString(Name);
                 writer.WriteNullTerminatedString(Type.ToString());
                 writer.Write(SuperBundleId);
-                parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
+                //parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
             public ParsedCustomBundle(FbmodParsing parser, BaseModResource resource)
             {
                 BundleEntry bEntry = new BundleEntry();
                 resource.FillAssetEntry(bEntry);
+                Name = bEntry.Name;
                 Type = bEntry.Type;
                 if (bEntry.Name.EndsWith("_bpb"))
                     Type = BundleType.BlueprintBundle;
                 SuperBundleId = bEntry.SuperBundleId;
                 parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
-            public ParsedCustomBundle(NativeReader reader)
+            public ParsedCustomBundle(FbmodParsing parser, NativeReader reader)
             {
                 Name = reader.ReadNullTerminatedString();
                 Type = (BundleType)Enum.Parse(typeof(BundleType), reader.ReadNullTerminatedString());
                 SuperBundleId = reader.ReadInt();
+                parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
         }
         public class ParsedModifiedEbx
@@ -378,18 +380,18 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 int parsedResCount = reader.ReadInt();
                 int parsedChkCount = reader.ReadInt();
                 for (int i = 0; i < parsedBundlesCount; i++)
-                    ParsedBundles.Add(new ParsedCustomBundle(reader));
+                    ParsedBundles.Add(new ParsedCustomBundle(this, reader));
                 for (int i = 0; i < parsedEbxCount; i++)
                 {
                     ParsedModifiedEbx parsedEbx = new ParsedModifiedEbx(reader);
-                    if (parsedEbx.Hash != null && !AbmDependenciesCache.HasSha1(parsedEbx.Hash))
+                    if (parsedEbx.Hash != null &&  parsedEbx.Hash != Sha1.Zero && !AbmDependenciesCache.HasSha1(parsedEbx.Hash))
                         return false;
                     ParsedEbx.Add(parsedEbx);
                 }
                 for (int i = 0; i < parsedResCount; i++)
                 {
                     ParsedModifiedRes parsedRes = new ParsedModifiedRes(reader);
-                    if (parsedRes.Hash != null && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
+                    if (parsedRes.Hash != null && parsedRes.Hash != Sha1.Zero && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
                         return false;
                     ParsedRes.Add(parsedRes);
                 }
@@ -519,7 +521,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     writer.Write(ParsedRes.Count);
                     writer.Write(ParsedChunks.Count);
                     foreach (ParsedCustomBundle parsedBundle in ParsedBundles)
-                        parsedBundle.WriteToCache(this, writer);
+                        parsedBundle.WriteToCache(writer);
                     foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
                         parsedEbx.WriteToCache(writer);
                     foreach (ParsedModifiedRes parsedRes in ParsedRes)

@@ -65,7 +65,7 @@ namespace AutoBundleManagerPlugin
             if (newEntry != null)
                 App.AssetManager.RevertAsset(newEntry);
 
-            EbxAsset newAsset = new EbxAsset(TypeLibrary.CreateObject(name));
+            EbxAsset newAsset = new EbxAsset(TypeLibrary.CreateObject(type));
             newAsset.SetFileGuid(Guid.NewGuid());
 
             dynamic obj = newAsset.RootObject;
@@ -319,14 +319,14 @@ namespace AutoBundleManagerPlugin
                         {
                             //Add each ebx and res from the target bundle to the source one, chunks need to be done separately cause of FirstMip/H32
                             List<AssetEntry> assetsToAdd = new List<AssetEntry>(App.AssetManager.EnumerateEbx().Where(o => o.IsInBundle(sourceBunId)));
-                            assetsToAdd.AddRange(App.AssetManager.EnumerateRes().Where(o => o.IsInBundle(targBunId)));
+                            assetsToAdd.AddRange(App.AssetManager.EnumerateRes().Where(o => o.IsInBundle(sourceBunId)));
 
                             AddToLog("Bundle Transfer", $"Moving assets to bundle", $"{assetsToAdd.Count() + App.AssetManager.EnumerateChunks().Where(o => o.IsInBundle(sourceBunId)).Count()} assets", $"{sourceBunName} - {targBunName}");
 
                             foreach (AssetEntry refEntry in assetsToAdd)
                             {
                                 //Ignore the asset if it is the primary asset/blueprint of the bundle being transferred
-                                if (refEntry != App.AssetManager.GetEbxEntry(sourceBunName.Substring(6, 0)))
+                                if (refEntry.Name.ToLower() != sourceBunName.Substring(6).ToLower())
                                 {
                                     switch (refEntry.Type)
                                     {
@@ -353,7 +353,7 @@ namespace AutoBundleManagerPlugin
                                                 AddToLog("Bundle Transfer", "Adding NetworkRegistry PointerRefs Entries", netregEntry.Name, $"{addedReferences}/{totalReferences}");
                                                 App.AssetManager.ModifyEbx(netregEntry.Name, netregAsset);
                                                 break;
-                                            }                                            
+                                            }
                                         case "MeshVariationDatabase": //TO BE DONE - FIND A WAY TO MERGE MVDBS IF MORE THAN ONE SOURCE BUNDLE IS BEING TRANSFERRED --- ALSO FIGURE OUT A WAY TO ACKNOWLEDGE EDITS MADE TO THE MVDB FOR EBX ASSETS 
                                             {
                                                 if (!AutoBundleManagerOptions.CompleteMeshVariations)
@@ -570,6 +570,8 @@ namespace AutoBundleManagerPlugin
                     3) Fill out the bundle's NetworkRegistry (or create one if it doesn't have it). WARNING - This should not be done for visual only (cosmetic) blueprint bundles (vurs) as they should be client side only, not networked.
             */
 
+            AbmDependenciesCache.UpdateCache(); //DELETE ME
+
             foreach (int bunId in bundleOrder)
             {
                 BundleEntry bEntry = App.AssetManager.GetBundleEntry(bunId);
@@ -703,7 +705,11 @@ namespace AutoBundleManagerPlugin
                     dynamic mvdbRoot = mvdbAsset.RootObject;
                     //Enumerate across every MeshVariation Entry and then write them to the game version
                     foreach (AbmMeshVariationDatabaseEntry mvEntryAbm in meshVariationsToAdd)
+                    {
                         mvdbRoot.Entries.Add(mvEntryAbm.WriteToGameEntry());
+                        mvdbAsset.AddDependency(mvEntryAbm.Mesh.External.FileGuid);
+                        mvEntryAbm.Materials.ForEach(mat => mat.TextureParameters.ForEach(texParam => mvdbAsset.AddDependency(texParam.Value.External.FileGuid)));
+                    }
 
                     AddToLog("Completing Bundle", "Adding MeshVariationDatabase Entries", mvdbEntry.Name, meshVariationsToAdd.Count().ToString());
 
@@ -717,7 +723,10 @@ namespace AutoBundleManagerPlugin
 
                     dynamic netregRoot = netregAsset.RootObject;
                     foreach (PointerRef pr in netRegPointerRefsToAdd)
+                    {
                         netregRoot.Objects.Add(pr);
+                        netregAsset.AddDependency(pr.External.FileGuid);
+                    }
 
                     AddToLog("Completing Bundle", "Adding NetworkRegistry PointerRefs Entries", netregEntry.Name, netRegPointerRefsToAdd.Count().ToString());
                     App.AssetManager.ModifyEbx(netregEntry.Name, netregAsset);

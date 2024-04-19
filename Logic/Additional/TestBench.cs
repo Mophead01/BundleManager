@@ -2,6 +2,7 @@
 using Frosty.Core;
 using Frosty.Core.Windows;
 using FrostySdk;
+using FrostySdk.Ebx;
 using FrostySdk.IO;
 using FrostySdk.Managers;
 using System;
@@ -410,25 +411,103 @@ namespace AutoBundleManagerPlugin
             //Export all bundle edits to a csv, so that they may be compared with bundle edits from the previous bundle manager.
             public void ExportBundleEdits(string filePath)
             {
+                uint CalculateCRC32(byte[] data)
+                {
+                    const uint polynomial = 0xedb88320;
+                    uint[] table = new uint[256];
+
+                    // Generate CRC32 table
+                    for (uint i = 0; i < 256; i++)
+                    {
+                        uint crc = i;
+                        for (int j = 8; j > 0; j--)
+                        {
+                            if ((crc & 1) == 1)
+                                crc = (crc >> 1) ^ polynomial;
+                            else
+                                crc >>= 1;
+                        }
+                        table[i] = crc;
+                    }
+
+                    // Calculate CRC32 checksum
+                    uint crc32 = 0xffffffff;
+                    foreach (byte b in data)
+                    {
+                        crc32 = (crc32 >> 8) ^ table[(crc32 & 0xff) ^ b];
+                    }
+                    return ~crc32;
+                }
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
-                    writer.WriteLine("Type, Asset, Bundle, FirstMip, H32");
+                    writer.WriteLine("Type, Asset, Bundle, Info1, Info2");
                     foreach (EbxAssetEntry parEntry in App.AssetManager.EnumerateEbx())
                     {
                         foreach (int bunId in parEntry.AddedBundles)
-                            writer.WriteLine(parEntry.AssetType, parEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, "", "");
+                            writer.WriteLine($"{parEntry.AssetType},{parEntry.Name},{App.AssetManager.GetBundleEntry(bunId).Name},,");
                     }
-                    foreach (ResAssetEntry resEntry in App.AssetManager.EnumerateRes())
+                    foreach (ResAssetEntry parEntry in App.AssetManager.EnumerateRes())
                     {
-                        foreach (int bunId in resEntry.AddedBundles)
-                            writer.WriteLine(resEntry.AssetType, resEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, "", "");
+                        foreach (int bunId in parEntry.AddedBundles)
+                            writer.WriteLine($"{parEntry.AssetType},{parEntry.Name},{App.AssetManager.GetBundleEntry(bunId).Name},,");
                     }
-                    foreach (ChunkAssetEntry chkEntry in App.AssetManager.EnumerateChunks())
+                    foreach (ChunkAssetEntry parEntry in App.AssetManager.EnumerateChunks())
                     {
-                        foreach (int bunId in chkEntry.AddedBundles)
-                            writer.WriteLine(chkEntry.AssetType, chkEntry.Name, App.AssetManager.GetBundleEntry(bunId).Name, chkEntry.FirstMip, chkEntry.H32);
+                        foreach (int bunId in parEntry.AddedBundles)
+                            writer.WriteLine($"{parEntry.AssetType},{parEntry.Name},{App.AssetManager.GetBundleEntry(bunId).Name},{parEntry.FirstMip},{parEntry.H32}");
                     }
-                    //Export Net Reg + MVDB
+                    foreach(EbxAssetEntry netEntry in App.AssetManager.EnumerateEbx(type:"NetworkRegistryAsset"))
+                    {
+                        if (netEntry.IsImaginary || !netEntry.HasModifiedData)
+                            continue;
+
+                        int startIdx = 0;
+                        if (!netEntry.IsAdded)
+                            startIdx = ((dynamic)App.AssetManager.GetEbx(netEntry, true).RootObject).Objects.Count;
+
+                        List<PointerRef> pointerRefs = ((dynamic)App.AssetManager.GetEbx(netEntry).RootObject).Objects;
+                        List<string> lines = new List<string>();
+                        for (int i = startIdx; i < pointerRefs.Count(); i++)
+                        {
+                            EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(pointerRefs[i].External.FileGuid);
+                            string refName = refEntry == null ? "Null Ref" : refEntry.Name;
+                            lines.Add($"NetRegEntry,{refName},{App.AssetManager.GetBundleEntry(netEntry.EnumerateBundles().First()).Name},{pointerRefs[i].External.FileGuid},{pointerRefs[i].External.ClassGuid}");
+                            //writer.WriteLine($"NetRegEntry,{refName},{App.AssetManager.GetBundleEntry(netEntry.Bundles.First()).Name},{pointerRefs[i].External.FileGuid},{pointerRefs[i].External.ClassGuid}");
+                        }
+                        lines = lines.OrderBy(str => str).ToList();
+                        foreach(string line in lines)
+                            writer.WriteLine(line);
+                    }
+                    foreach (EbxAssetEntry mvdbEntry in App.AssetManager.EnumerateEbx(type:"MeshVariationDatabase"))
+                    {
+                        if (mvdbEntry.IsImaginary || !mvdbEntry.HasModifiedData)
+                            continue;
+
+                        int startIdx = 0;
+                        if (!mvdbEntry.IsAdded)
+                            startIdx = ((dynamic)App.AssetManager.GetEbx(mvdbEntry, true).RootObject).Entries.Count;
+
+                        dynamic mvEntries = ((dynamic)App.AssetManager.GetEbx(mvdbEntry).RootObject).Entries;
+                        List<string> lines = new List<string>();
+                        for (int i = startIdx; i < mvEntries.Count; i++)
+                        {
+                            EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(mvEntries[i].Mesh.External.FileGuid);
+                            string refName = refEntry == null ? "Null Ref" : refEntry.Name;
+                            uint checksum;
+                            using (MemoryStream memoryStream = new MemoryStream())
+                            {
+                                using (NativeWriter binWriter = new NativeWriter(memoryStream))
+                                {
+                                    new AbmMeshVariationDatabaseEntry(mvEntries[i]).WriteBinary(binWriter);
+                                    checksum = CalculateCRC32(memoryStream.ToArray());
+                                }
+                            }
+                            lines.Add($"MeshVariationDB,{refName},{App.AssetManager.GetBundleEntry(mvdbEntry.EnumerateBundles().First()).Name},{mvEntries[i].VariationAssetNameHash},{checksum}");
+                        }
+                        lines = lines.OrderBy(str => str).ToList();
+                        foreach (string line in lines)
+                            writer.WriteLine(line);
+                    }
                 }
             }
         }

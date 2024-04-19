@@ -150,7 +150,7 @@ namespace AutoBundleManagerPlugin
                     refNames.Add(parEntry.Name.ToLower() + "/rvmdatabase_dx11rvmdatabase");
                     refNames.Add(parEntry.Name.ToLower() + "/rvmdatabase_dx11nvrvmdatabase");
                     break;
-                case "StaticMeshAsset":
+                case "RigidMeshAsset":
                 case "SkinnedMeshAsset":
                 case "CompositeMeshAsset":
                     Sha1 meshSha1 = parEntry.GetSha1();
@@ -537,7 +537,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DependenciesCache.cache";
-        private static int cacheVersion = 22;
+        private static int cacheVersion = 23;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencySavedData> dependencies = new Dictionary<Sha1, DependencySavedData>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
@@ -577,7 +577,7 @@ namespace AutoBundleManagerPlugin
             cacheNeedsUpdating = true;
             if (!isEmpty)
             {
-                ResDependencyDetector extension = (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)(resEntry).ResType]);
+                ResDependencyDetector extension = resLoggerExtensions.ContainsKey((ResourceType)resEntry.ResType) ? (ResDependencyDetector)Activator.CreateInstance(resLoggerExtensions[(ResourceType)(resEntry).ResType]) : new ResDependencyDetector();
                 extension.ExtractData(resEntry.ResRid, resEntry, resStream == null ? App.AssetManager.GetRes(resEntry) : resStream);
                 dependencies.Add(sha1, new DependencySavedData(resEntry.Name, new Guid(), true, extension.refNames, extension.ebxPointerGuids, extension.resRids, extension.chunkGuids, new HashSet<Guid>() { }, null, new Dictionary<string, HashSet<string>>()));
             }

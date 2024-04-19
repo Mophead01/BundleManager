@@ -43,4 +43,5 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestSublevelsParentMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestChunkFirstMipH32MenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmDependenciesToXmlMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCurrentProjectToCsvMenuExtension))]
 [assembly: RegisterExportAction(typeof(BundleManagerLaunchExportOverride), ExportType.ExportOnly, 15)]
