@@ -17,12 +17,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Xml.Linq;
 
 namespace AutoBundleManagerPlugin.Logic.Operations
 {
     public class FbmodParsing
     {
-        private static int cacheVersion = 1;
+        private static int cacheVersion = 3;
         protected static int HashBundle(BundleEntry bentry)
         {
             return HashBundle(bentry.Name);
@@ -67,14 +68,16 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 if (bEntry.Name.EndsWith("_bpb"))
                     Type = BundleType.BlueprintBundle;
                 SuperBundleId = bEntry.SuperBundleId;
-                parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
+                if (!parser.adaptiveBundleHashesToIds.ContainsKey(HashBundle(Name)))
+                    parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
             public ParsedCustomBundle(FbmodParsing parser, NativeReader reader)
             {
                 Name = reader.ReadNullTerminatedString();
                 Type = (BundleType)Enum.Parse(typeof(BundleType), reader.ReadNullTerminatedString());
                 SuperBundleId = reader.ReadInt();
-                parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
+                if (!parser.adaptiveBundleHashesToIds.ContainsKey(HashBundle(Name)))
+                    parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
             }
         }
         public class ParsedModifiedEbx
@@ -136,7 +139,9 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         Stream ebxStream = rm.GetResourceData(data);
                         using (EbxReader reader = EbxReader.CreateReader(rm.GetResourceData(data), App.FileSystem))
                             dataObject = reader.ReadAsset<EbxAsset>();
-                        Name = ((dynamic)((EbxAsset)dataObject).RootObject).Name;
+                        string rootName = ((dynamic)((EbxAsset)dataObject).RootObject).Name;
+                        if (rootName.ToLower() == Name.ToLower())
+                            Name = rootName;
                         Type = ((dynamic)((EbxAsset)dataObject).RootObject).GetType().Name;
                         FileGuid = ((EbxAsset)dataObject).FileGuid;
                         modifiedAsset = ((EbxAsset)dataObject);
@@ -157,6 +162,12 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         extraData.Data = extraData.Handler.Load(extraData.Data, (byte[])dataObject);
                         RuntimeResources runtimeResources = new RuntimeResources();
                         AssetEntry newEntry = new AssetEntry() { Name = Name };
+
+                        EbxAssetEntry origEntry = App.AssetManager.GetEbxEntry(newEntry.Name);
+                        Sha1 origSha1 = origEntry.Sha1;
+                        long origSize = origEntry.Size;
+
+
                         extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetEbxEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] ebxData);
                         using (EbxReader reader = EbxReader.CreateReader(rm.GetResourceData(ebxData), App.FileSystem))
                         {
@@ -166,6 +177,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                             reader.BaseStream.Position = 0;
                             Hash = Utils.GenerateSha1(reader.ReadToEnd());
                         }
+                        origEntry.Sha1 = origSha1;
+                        origEntry.Size = origSize;
                         //}
 
                     }
@@ -197,6 +210,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 if (ContainsModifiedData)
                 {
                     writer.Write(HasHandler);
+                    writer.Write((uint)ResType);
                     writer.Write(ResRid);
                     writer.Write(Hash);
                 }
@@ -210,6 +224,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 if (ContainsModifiedData)
                 {
                     HasHandler = reader.ReadBoolean();
+                    ResType = (ResourceType)reader.ReadUInt();
                     ResRid = reader.ReadULong();
                     Hash = reader.ReadSha1();
                 }
@@ -244,9 +259,29 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                         extraData.Data = extraData.Handler.Load(extraData.Data, data);
                         RuntimeResources runtimeResources = new RuntimeResources();
                         AssetEntry newEntry = new AssetEntry() { Name = Name };
-                        extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetResEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] resData);
+
+                        ResAssetEntry oldEntry = App.AssetManager.GetResEntry(Name);
+
+                        Sha1 oldSha1 = oldEntry.Sha1;
+                        long oldOriginalSize = oldEntry.OriginalSize;
+                        long oldSize = oldEntry.Size;
+                        byte[] oldMeta = oldEntry.ResMeta;
+
+
+                        extraData.Handler.Modify(oldEntry, App.AssetManager, runtimeResources, extraData.Data, out byte[] resData);
                         using (NativeReader reader = new NativeReader(rm.GetResourceData(resData)))
                             data = reader.ReadToEnd();
+
+                        oldEntry.Sha1 = oldSha1;
+                        oldEntry.OriginalSize = oldOriginalSize;
+                        oldEntry.Size = oldSize;
+                        oldEntry.ResMeta = oldMeta;
+
+
+                        //extraData.Handler.Modify(resource.IsAdded ? newEntry : App.AssetManager.GetResEntry(Name), App.AssetManager, runtimeResources, extraData.Data, out byte[] resData);
+                        //using (NativeReader reader = new NativeReader(rm.GetResourceData(resData)))
+                        //    data = reader.ReadToEnd();
+
                     }
                     else
                     {
@@ -307,7 +342,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 
             foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
             {
-                EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(parsedEbx.Name);
+                EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(parsedEbx.FileGuid);
                 int[] bunIds = parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (refEntry == null)
                     App.AssetManager.AddImaginaryEbx(parsedEbx.Name, parsedEbx.FileGuid, parsedEbx.ContainsModifiedData ? parsedEbx.Hash : Sha1.Zero, parsedEbx.ContainsModifiedData ? parsedEbx.Type : null, bunIds);
@@ -413,9 +448,23 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         {
             Dictionary<AssetEntry, Sha1> modifiedSha1s = new Dictionary<AssetEntry, Sha1>();
             foreach (ParsedModifiedEbx parsedEbx in ParsedEbx.Where(parsedEbx => parsedEbx.ContainsModifiedData))
-                modifiedSha1s.Add(App.AssetManager.GetEbxEntry(parsedEbx.Name), parsedEbx.Hash);
+            {
+                EbxAssetEntry modifEbxEntry = App.AssetManager.GetEbxEntry(parsedEbx.Name);
+                if (modifEbxEntry == null)
+                    modifEbxEntry = App.AssetManager.GetEbxEntry(parsedEbx.FileGuid);
+                if (modifiedSha1s.ContainsKey(modifEbxEntry))
+                    modifiedSha1s[modifEbxEntry] = parsedEbx.Hash;
+                else
+                    modifiedSha1s.Add(modifEbxEntry, parsedEbx.Hash);
+            }
             foreach (ParsedModifiedRes parsedRes in ParsedRes.Where(parsedRes => parsedRes.ContainsModifiedData))
-                modifiedSha1s.Add(App.AssetManager.GetResEntry(parsedRes.Name), parsedRes.Hash);
+            {
+                ResAssetEntry modifiedResEntry = App.AssetManager.GetResEntry(parsedRes.Name);
+                if (modifiedSha1s.ContainsKey(modifiedResEntry))
+                    modifiedSha1s[modifiedResEntry] = parsedRes.Hash;
+                else
+                    modifiedSha1s.Add(modifiedResEntry, parsedRes.Hash);
+            }
             return modifiedSha1s;
         }
         public FbmodParsing(string fbmodFullPath, FrostyTaskWindow task)

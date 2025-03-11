@@ -56,4 +56,23 @@
         </Setter>
     </Style>
 
+    <Style TargetType="{x:Type local:RvmEditor+RvmViewer}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:RvmEditor+RvmViewer}">
+                    <Grid Background="{StaticResource ControlBackground}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <ctrl:FrostyDockablePanel TitleBarVisible="False"  Grid.Row="1">
+                            <Grid>
+                                <core:FrostyPropertyGrid x:Name="PART_RvmEdtiorViewer" ClassViewVisible="True"/>
+                            </Grid>
+                        </ctrl:FrostyDockablePanel>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

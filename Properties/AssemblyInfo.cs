@@ -28,6 +28,7 @@ using System.Windows;
 [assembly: PluginVersion("0.0.0.1")]
 
 [assembly: PluginValidForProfile((int)ProfileVersion.StarWarsBattlefrontII)]
+[assembly: PluginValidForProfile((int)ProfileVersion.Battlefield1)]
 [assembly: RegisterTabExtension(typeof(DependencyViewer))]
 
 
@@ -45,3 +46,7 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmDependenciesToXmlMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCurrentProjectToCsvMenuExtension))]
 [assembly: RegisterExportAction(typeof(BundleManagerLaunchExportOverride), ExportType.ExportOnly, 15)]
+[assembly: RegisterMenuExtension(typeof(RvmEditor.RvmViewerMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(RvmEditor.RvmComparerMenuExtension))]
+[assembly: RegisterPointerRefIdOverride("RvmTypeData", typeof(RvmEditor.RvmTypeDataPrIdExtension), true, 0)]
+[assembly: RegisterPointerRefIdOverride("RvmDataContainer", typeof(RvmEditor.RvmDataContainerPrIdExtension), true, 0)]

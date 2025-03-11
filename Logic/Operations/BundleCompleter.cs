@@ -145,6 +145,11 @@ namespace AutoBundleManagerPlugin
         {
             #region Preparing Bundle Manager
             stopWatch.Start();
+            task.Update("Updating EBX SHA1");
+            App.AssetManager.UpdateEbxSha1s();
+
+
+            task.Update("ABM: Preparing Bundle Manager");
             //Making sure there are no lingering custom bundles edits with the static bundle heap. Custom bundles will be recalculated during this process.
             AbmBundleHeap.ClearCustomBundles();
             AbmDependenciesCache.ClearSha1Overrides();
@@ -237,10 +242,13 @@ namespace AutoBundleManagerPlugin
                             continue;
                         AddToLog("Caching", "Getting Dependencies", modifiedEbx.Name, modifiedEbx.Hash.ToString());
                         EbxAssetEntry parEntry = App.AssetManager.GetEbxEntry(modifiedEbx.Name);
+                        if (parEntry == null)
+                            parEntry = App.AssetManager.GetEbxEntry(modifiedEbx.FileGuid);
 
                         DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry, modifiedEbx.Hash);
                         UpdatedLoggedDependencies(parEntry, dependencies, modifiedEbx.HasHandler, modifiedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList());
                     }
+                    AbmDependenciesCache.UpdateCache();
                 }
                 else
                 {
@@ -282,7 +290,7 @@ namespace AutoBundleManagerPlugin
                     else if (bEntry.Name.Contains("Gameplay/Bundles/SP/"))
                         new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>() { App.AssetManager.GetBundleId("win32/Levels/SP/RootLevel/RootLeveln") });
                     else
-                        new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, mpvurParentBundles);
+                        new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>(mpvurParentBundles));
                 }
                 else //For none bpbs (sublevels) we don't make any assumptions about what their parents are, description edits and subworld refs should let us figure that out later.
                     new BundleHeapEntry(App.AssetManager.GetBundleId(bEntry.Name), true, new List<int>());
@@ -500,7 +508,12 @@ namespace AutoBundleManagerPlugin
             int modifiedBundlesCount = AbmBundleHeap.Bundles.Select(pair => pair.Value).Where(heapEntry => !heapEntry.IsCustomBundle && heapEntry.CustomParentIds.Count() > 0).ToList().Count();
             AddToLog("Bundle Planning", "Verifying Heap Integrity", $"{addedBundlesCount} Added Bundles", $"{modifiedBundlesCount} Modified Bundles");
             if (AbmBundleHeap.VerifyHeapIntegrity(true))
+            {
+                AbmDependenciesCache.ClearSha1Overrides();
+                AbmDependenciesCache.UpdateCache();
+                WriteLogger();
                 return;
+            }
             AddToLog("Bundle Planning", "Verified Heap Integrity", $"{addedBundlesCount} Added Bundles", $"{modifiedBundlesCount} Modified Bundles");
 
             /*
@@ -697,6 +710,12 @@ namespace AutoBundleManagerPlugin
                     }
                 }
 
+                //TEMP FIX MUST REMOVE LATER
+                if (bEntry.Imaginary)
+                {
+                    continue;
+                }
+
                 //Add MeshVariationDatabase Entries
                 if (meshVariationsToAdd.Count() > 0 && AutoBundleManagerOptions.CompleteMeshVariations)
                 {
@@ -767,6 +786,23 @@ namespace AutoBundleManagerPlugin
 
             #region Post Completion Actions
 
+            WriteLogger();
+
+            AbmDependenciesCache.ClearSha1Overrides();
+            //During this process we have probably discovered several new asset dependencies so we should cache that (the cache class will make sure it actually does need to be updated before writing to disk.)
+            AbmDependenciesCache.UpdateCache();
+            //Reset the bundle heap, clearing any custom bundles or bundle parent changes made during this process.
+            AbmBundleHeap.ClearCustomBundles();
+
+            //Stop the stopwatch and print to logger
+            stopWatch.Stop();
+            App.Logger.Log(string.Format("Bundle Manager Completed in {0} seconds.", stopWatch.Elapsed));
+
+            #endregion
+        }
+
+        void WriteLogger()
+        {
             //Write Log out to csv - Try Catch because common csv readers (Excel) stupidly lock the file while opened, causing a crash if I tried to write to it through this.
             try
             {
@@ -780,18 +816,6 @@ namespace AutoBundleManagerPlugin
             {
                 App.Logger.Log("Could not export file " + App.FileSystem.CacheName + "_BundleManager_LogList.csv");
             }
-
-            AbmDependenciesCache.ClearSha1Overrides();
-            //During this process we have probably discovered several new asset dependencies so we should cache that (the cache class will make sure it actually does need to be updated before writing to disk.)
-            AbmDependenciesCache.UpdateCache();
-            //Reset the bundle heap, clearing any custom bundles or bundle parent changes made during this process.
-            AbmBundleHeap.ClearCustomBundles();
-
-            //Stop the stopwatch and print to logger
-            stopWatch.Stop();
-            App.Logger.Log(string.Format("Bundle Manager Completed in {0} seconds.", stopWatch.Elapsed));
-
-            #endregion
         }
 
 

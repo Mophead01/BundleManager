@@ -48,7 +48,7 @@ namespace AutoBundleManagerPlugin
     {
         public PointerRef Material;
         public PointerRef MaterialVariation;
-        public Int64 MaterialId;
+        public System.Int64 MaterialId;
         public Guid SurfaceShaderGuid;
         public UInt32 SurfaceShaderId;
         public List<AbmTextureShaderParameter> TextureParameters = new List<AbmTextureShaderParameter>();

@@ -176,7 +176,9 @@ namespace AutoBundleManagerPlugin
             {
                 if (AbmBundleHeap.Bundles.ContainsKey(bunId))
                 {
-                    foreach (int parentBunId in AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds(false))
+                    List<int> parentBundleIds = AbmBundleHeap.Bundles[bunId].EnumerateParentBundleIds(false).ToList();
+                    List<string> parentBundleNames = parentBundleIds.Select(id => App.AssetManager.GetBundleEntry(id).Name).ToList();
+                    foreach (int parentBunId in parentBundleIds)
                     {
                         if (checkedChildrenBunIds.Contains(parentBunId))
                         {

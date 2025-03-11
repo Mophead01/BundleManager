@@ -537,7 +537,7 @@ namespace AutoBundleManagerPlugin
     public static class AbmDependenciesCache
     {
         private static string cacheFileName = $"{App.FileSystem.CacheName}/AutoBundleManager/DependenciesCache.cache";
-        private static int cacheVersion = 23;
+        private static int cacheVersion = 25;
         private static bool cacheNeedsUpdating = false;
         private static Dictionary<Sha1, DependencySavedData> dependencies = new Dictionary<Sha1, DependencySavedData>();
         private static Dictionary<ResourceType, Type> resLoggerExtensions = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(ResDependencyDetector))).ToDictionary(type => ((ResDependencyDetector)Activator.CreateInstance(type)).resType, type => type);
