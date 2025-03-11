@@ -28,15 +28,16 @@ using System.Xml.Linq;
 using static Frosty.Core.Screens.GFSDK_ShadowLib;
 using static FrostySdk.GeometryDeclarationDesc;
 using Frosty.Hash;
+using Frosty.Core.Windows;
 
 namespace AutoBundleManagerPlugin
 {
     public class RvmEditor
     {
-        public static class RvmTypeSizesPreCache
+        public static class RvmStaticVariables
         {
             public static Dictionary<uint, ushort> rvmSizes = new Dictionary<uint, ushort>();
-            static RvmTypeSizesPreCache()
+            static RvmStaticVariables()
             {
                 using (BinaryReader reader = new BinaryReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AutoBundleManagerPlugin.Data.Swbf2_V2ExtractedTypeInfoSizes.cache")))
                 {
@@ -53,6 +54,19 @@ namespace AutoBundleManagerPlugin
                     }
                 }
             }
+
+
+            public static Dictionary<uint, string> textureHashToNames = null;
+            public static Dictionary<uint, string> shaderHashToNames = null;
+            private static bool bGotHashNames = false;
+            public static void GetHashNames()
+            {
+                if (bGotHashNames)
+                    return;
+                Dictionary<uint, string> textureHashToNames = App.AssetManager.EnumerateEbx().Where(ebxEntry => TypeLibrary.IsSubClassOf(ebxEntry.Type, "TextureBaseAsset")).ToDictionary(ebxEntry => (uint)Utils.HashString(ebxEntry.Name, true), ebxEntry => ebxEntry.Name);
+                Dictionary<uint, string> shaderHashToNames = App.AssetManager.EnumerateEbx().Where(ebxEntry => TypeLibrary.IsSubClassOf(ebxEntry.Type, "SurfaceShaderBaseAsset")).ToDictionary(ebxEntry => (uint)Utils.HashString(ebxEntry.Name, true), ebxEntry => ebxEntry.Name);
+                bGotHashNames = true;
+            }
         }
         public class RvmViewerMenuExtension : MenuExtension
         {
@@ -66,7 +80,13 @@ namespace AutoBundleManagerPlugin
 
             public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
             {
-                App.EditorWindow.OpenEditor("RVM Viewer", new RvmViewer());
+                RvmDatabase rvmDatabase = new RvmDatabase();
+                FrostyTaskWindow.Show("Opening RVM", "", (task) =>
+                {
+                    string rvmName = "s2/levels/cloudcity_01/cloudcity_01/rvmdatabase_dx11nvrvmdatabase"; //"s2/levels/cloudcity_01/cloudcity_01/rvmdatabase_dx12pcrvmdatabase";//"levels/sp/rootlevel/rootlevel/rvmdatabase_dx12pcrvmdatabase";//"gameplay/bundles/sharedbundles/sp/vehicles/sharedbundlevehicles_sp/rvmdatabase_dx11nvrvmdatabase";
+                    rvmDatabase = new RvmDatabase(App.AssetManager.GetResEntry(rvmName), task);
+                });
+                App.EditorWindow.OpenEditor("RVM Viewer", new RvmViewer(rvmDatabase));
             });
 
         }
@@ -109,25 +129,27 @@ namespace AutoBundleManagerPlugin
         {
             private const string PART_RvmEdtiorViewer = "PART_RvmEdtiorViewer";
             private FrostyPropertyGrid RvmEditorPropertyGrid;
+            private RvmDatabase rvmDatabase;
             static RvmViewer()
             {
                 DefaultStyleKeyProperty.OverrideMetadata(typeof(RvmViewer), new FrameworkPropertyMetadata(typeof(RvmViewer)));
             }
-            public RvmViewer()
+            public RvmViewer(RvmDatabase inputDatabase)
             {
-
+                rvmDatabase = inputDatabase;
             }
             public override void OnApplyTemplate()
             {
                 base.OnApplyTemplate();
                 RvmEditorPropertyGrid = GetTemplateChild(PART_RvmEdtiorViewer) as FrostyPropertyGrid;
-                string rvmName = "gameplay/bundles/sharedbundles/sp/vehicles/sharedbundlevehicles_sp/rvmdatabase_dx11nvrvmdatabase"; //"s2/levels/cloudcity_01/cloudcity_01/rvmdatabase_dx12pcrvmdatabase";//"levels/sp/rootlevel/rootlevel/rvmdatabase_dx12pcrvmdatabase";//"gameplay/bundles/sharedbundles/sp/vehicles/sharedbundlevehicles_sp/rvmdatabase_dx11nvrvmdatabase";
-                RvmEditorPropertyGrid.SetClass(new RvmDatabase(App.AssetManager.GetResEntry(rvmName)));
+                RvmEditorPropertyGrid.SetClass(rvmDatabase);
             }
         }
         [EbxClassMeta(EbxFieldType.Struct)]
         public class RvmDatabase
         {
+
+            private bool bPrintMissingRefs = false;
             #region Meta
 
             [Category("Res Meta")]
@@ -198,26 +220,35 @@ namespace AutoBundleManagerPlugin
             [EbxFieldMeta(EbxFieldType.Array)]
             public List<RvmDataContainer> DataContainer { get; set; }
 
+
+            //[Category("Rvm Database")]
+            //[EbxFieldMeta(EbxFieldType.Array)]
+            //public List<List<RvmData>> ParentArrays { get; set; }
+            [Category("Rvm Database")]
+            [EbxFieldMeta(EbxFieldType.Array)]
+            public List<RvmData> ParentData { get; set; }
+
             #endregion
 
-            bool isReadFile = false;
             public RvmDatabase()
             {
+                RvmStaticVariables.GetHashNames();
             }
-            public RvmDatabase(ResAssetEntry resAssetEntry)
+            public RvmDatabase(ResAssetEntry resAssetEntry, FrostyTaskWindow task = null)
             {
-
+                RvmStaticVariables.GetHashNames();
                 using (NativeReader reader = new NativeReader(new MemoryStream(resAssetEntry.ResMeta)))
                     ReadHeader(reader);
                 using (NativeReader reader = new NativeReader(App.AssetManager.GetRes(resAssetEntry)))
-                    ReadData(reader);
+                    ReadData(reader, task:task);
             }
-            public RvmDatabase(string fileName)
+            public RvmDatabase(string fileName, FrostyTaskWindow task = null)
             {
+                RvmStaticVariables.GetHashNames();
                 using (NativeReader reader = new NativeReader(new FileStream(fileName, FileMode.Open)))
                 {
                     ReadHeader(reader);
-                    ReadData(reader, 0x10);
+                    ReadData(reader, 0x10, task: task);
                 }
             }
             public void ReadHeader(NativeReader reader)
@@ -227,7 +258,7 @@ namespace AutoBundleManagerPlugin
                 Size = reader.ReadUInt();
                 MaybeHash = reader.ReadUInt();
             }
-            public void ReadData(NativeReader reader, int startIndex = 0)
+            public void ReadData(NativeReader reader, int startIndex = 0, FrostyTaskWindow task = null)
             {
                 Dictionary<uint, Type> types = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(RvmData))).ToDictionary(type => (uint)Utils.HashString(type.Name), type => type);
                 types.Add((uint)Utils.HashString("char"), typeof(CharRvm));
@@ -260,23 +291,39 @@ namespace AutoBundleManagerPlugin
                     DataContainer.Add(new RvmDataContainer(type.Name, (int)type.Count, rvmType, reader, rvmCountManager, type.NameHash));
                 }
 
-                Dictionary<ulong, (ulong, ulong, uint, string)> tempCityHashReadValues = new Dictionary<ulong, (ulong, ulong, uint, string)>();
+                //Dictionary<ulong, (ulong, ulong, uint, string)> tempCityHashReadValues = new Dictionary<ulong, (ulong, ulong, uint, string)>();
 
-                Dictionary<ulong, List<RvmData>> cityHashDict = new Dictionary<ulong, List<RvmData>>();
+                Dictionary<ulong, RvmArray> cityHashDict = new Dictionary<ulong, RvmArray>();
                 foreach (RvmDataContainer dataContainer in DataContainer)
                 {
                     for (int i = 0; i < dataContainer.Data.Count; i++)
                     {
-                        cityHashDict.Add(dataContainer.CityHashes[i], dataContainer.Data[i]);
-                        tempCityHashReadValues.Add(dataContainer.CityHashes[i], (dataContainer.TempOriginalCityHashes[i], 0, dataContainer.typeHash, dataContainer.TypeName));
+                        cityHashDict.Add(dataContainer.CityHashes[i] & ((1UL << 47) - 1), dataContainer.Data[i]);
+                        //tempCityHashReadValues.Add(dataContainer.CityHashes[i], (dataContainer.TempOriginalCityHashes[i], 0, dataContainer.typeHash, dataContainer.TypeName));
                     }
                 }
+                HashSet<string> errorsToReport = new HashSet<string>();
+                int containerIdx = 0;
+                int containerMax = DataContainer.Count;
+                Dictionary<Guid, RvmSerializedDb_ns_RvmPermutationSet> permutationSets = new Dictionary<Guid, RvmSerializedDb_ns_RvmPermutationSet>();
                 foreach (RvmDataContainer dataContainer in DataContainer)
                 {
-                    foreach(List<RvmData> rvmDatas in dataContainer.Data)
+                    task.Update(progress: (float)containerIdx++ / containerMax * 100);
+                    foreach (RvmArray rvmArray in dataContainer.Data)
                     {
-                        foreach (RvmData rvmData in rvmDatas)
+                        foreach (RvmData rvmData in rvmArray.Array)
                         {
+                            string rvmDataTypeName = rvmData.GetType().Name;
+                            if (rvmDataTypeName == "UnknownRvmType")
+                                rvmDataTypeName = ((UnknownRvmType)rvmData).TypeRealName;
+                            if (rvmDataTypeName == "RvmSerializedDb_ns_RvmPermutationSet")
+                            {
+                                rvmArray.IsChild = true;
+                                permutationSets.Add(((RvmSerializedDb_ns_RvmPermutationSet)rvmData).Guid, (RvmSerializedDb_ns_RvmPermutationSet)rvmData);
+                            }
+
+                            //if (rvmDataTypeName != "RvmSerializedDb_ns_RvmPermutationSet")
+                            //    continue;
                             var fields = rvmData.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
                             List<ulong> foundRefs = new List<ulong>();
@@ -286,42 +333,48 @@ namespace AutoBundleManagerPlugin
                                 // Check if the field is of type RvmReference
                                 if (field.PropertyType == typeof(RvmReference))
                                 {
-                                    ulong refHash = ((RvmReference)field.GetValue(rvmData)).referenceHash & 0x000000ffffffffff;
-                                    ulong origHash = ((RvmReference)field.GetValue(rvmData)).referenceHash;
+                                    ulong refHash = ((RvmReference)field.GetValue(rvmData)).referenceHash & ((1UL << 47) - 1);
+                                    //ulong origHash = ((RvmReference)field.GetValue(rvmData)).referenceHash;
                                     if (!cityHashDict.ContainsKey(refHash) && refHash != 0)
-                                        App.Logger.Log($"Warning: Recognised Ref is a Float: {rvmData.GetType().Name}\t{field.Name}: {refHash}\t{cityHashDict.ContainsKey(refHash)}");
+                                        errorsToReport.Add($"Warning: Recognised Ref is a Float: {rvmDataTypeName}\t{field.Name}: {refHash}\t{cityHashDict.ContainsKey(refHash)}");
                                     else if (cityHashDict.ContainsKey(refHash))
                                     {
-                                        ((RvmReference)field.GetValue(rvmData)).ReferenceArray = cityHashDict[refHash];
-                                        foundRefs.Add(refHash);
-                                        
-                                        if (tempCityHashReadValues[refHash].Item2 == 0)
-                                            tempCityHashReadValues[refHash] = (tempCityHashReadValues[refHash].Item1, origHash, tempCityHashReadValues[refHash].Item3, tempCityHashReadValues[refHash].Item4);
-                                        else if (tempCityHashReadValues[refHash].Item2 != origHash)
-                                            throw new Exception($"UNRECOGNISED REFERENCE: {rvmData.GetType().Name}\t{field.Name}: {refHash}\t{tempCityHashReadValues[refHash].Item1}\t{tempCityHashReadValues[refHash].Item2}");
+                                        ((RvmReference)field.GetValue(rvmData)).ReferenceArray = cityHashDict[refHash].Array;
+                                            foundRefs.Add(refHash);
+                                        cityHashDict[refHash].IsChild = true;
+                                        //if (tempCityHashReadValues[refHash].Item2 == 0)
+                                        //    tempCityHashReadValues[refHash] = (tempCityHashReadValues[refHash].Item1, origHash, tempCityHashReadValues[refHash].Item3, tempCityHashReadValues[refHash].Item4);
+                                        //else if (tempCityHashReadValues[refHash].Item2 != origHash)
+                                        //    throw new Exception($"UNRECOGNISED REFERENCE: {rvmDataTypeName}\t{field.Name}: {refHash}\t{tempCityHashReadValues[refHash].Item1}\t{tempCityHashReadValues[refHash].Item2}");
                                     }
                                 }
-                                else if (field.PropertyType == typeof(ulong))
+                                else if (field.PropertyType == typeof(ulong) && bPrintMissingRefs)
                                 {
-                                    ulong refHash = (ulong)field.GetValue(rvmData) & 0x000000ffffffffff;
+                                    ulong refHash = (ulong)field.GetValue(rvmData) & ((1UL << 47) - 1);
                                     if (cityHashDict.ContainsKey(refHash) && refHash != 0 && field.Name != "cityHash")
-                                        App.Logger.Log($"Warning: Unrecognised Float is a Ref: {rvmData.GetType().Name}\t{field.Name}: {refHash}");
+                                        errorsToReport.Add($"Warning: Unrecognised Float is a Ref: {rvmDataTypeName}\t{field.Name}");
                                 }
                             }
 
 
                             //Check all refs have been discovered
-                            if (true ) //rvmData.GetType().Name != "RvmSerializedDb_ns_RvmPermutationSet"
+                            if (bPrintMissingRefs) //rvmDataTypeName != "RvmSerializedDb_ns_RvmPermutationSet"
                             {
                                 List<ulong> possiblyUnfoundRefs = new List<ulong>();
+                                Dictionary<ulong, List<int>> unfoundLocations = new Dictionary<ulong, List<int>>();
                                 using (NativeReader rvmReader = new NativeReader(new MemoryStream(rvmData.originalBytes)))
                                 {
                                     for (int i = 0; rvmData.originalBytes.Length + 16> i; i++)
                                     {
                                         rvmReader.BaseStream.Position = i;
-                                        ulong refHash = rvmReader.ReadULong() & 0x000000ffffffffff;
+                                        ulong refHash = rvmReader.ReadULong() & ((1UL << 47) - 1);
                                         if (cityHashDict.ContainsKey(refHash))
+                                        {
                                             possiblyUnfoundRefs.Add(refHash);
+                                            if (!unfoundLocations.ContainsKey(refHash))
+                                                unfoundLocations.Add(refHash, new List<int>());
+                                            unfoundLocations[refHash].Add(i);
+                                        }
                                     }
                                 };
 
@@ -331,26 +384,51 @@ namespace AutoBundleManagerPlugin
                                     int possiblyUnfoundCount = possiblyUnfoundRefs.Count(r => r == refHash);
                                     if (foundCount != possiblyUnfoundCount)
                                     {
-                                        App.Logger.LogError($"UNRECOGNISED REFERENCE SOMEWHERE: {rvmData.GetType().Name}:\t {refHash}\t{foundCount}\t{possiblyUnfoundCount}");
+                                        foreach(int location in unfoundLocations[refHash])
+                                            errorsToReport.Add($"Unrecognised Reference Somewhere: {rvmDataTypeName}:\t 0x{location.ToString("X")}\t(Total: 0x{rvmData.expectedSize.ToString("X")})");
+                                        //App.Logger.LogError($"UNRECOGNISED REFERENCE SOMEWHERE: {rvmDataTypeName}:\t {refHash}\t{foundCount}\t{possiblyUnfoundCount}");
                                     }
                                 }
                             }
                         }
                     }
                 }
+                if (bPrintMissingRefs)
+                    App.Logger.LogError("Errors:\n" + string.Join("\n", errorsToReport.OrderByDescending(a => a)));
 
+                //ParentArrays = new List<List<RvmData>>();
+                //foreach (RvmDataContainer dataContainer in DataContainer)
+                //{
+                //    foreach (RvmArray rvmArray in dataContainer.Data.Where(array => !array.IsChild))
+                //        ParentArrays.Add(rvmArray.Array);
+                //}
 
-
-                string filePath = @"E:\C#\Frosty\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\Data\RvmCityHashComparison.csv";
-                using (StreamWriter writer = new StreamWriter(filePath))
+                ParentData = new List<RvmData>();
+                foreach (RvmDataContainer dataContainer in DataContainer)
                 {
-                    writer.WriteLine("Key,RealCityHash,ReadCityHash,TypeHash,TypeName"); // CSV header
-
-                    foreach (var kvp in tempCityHashReadValues.Where(kvp => kvp.Value.Item2 != 0))
+                    foreach (RvmArray rvmArray in dataContainer.Data.Where(array => !array.IsChild))
                     {
-                        writer.WriteLine($"{kvp.Key},{kvp.Value.Item1},{kvp.Value.Item2},{kvp.Value.Item3},{kvp.Value.Item4}");
+                        if (rvmArray.Array.Count > 1)
+                            throw new Exception("Read wrong");
+                        ParentData.Add(rvmArray.Array[0]);
+                        if (rvmArray.Array[0].GetType() == typeof(RvmSerializedDb_ns_SurfaceShader))
+                        {
+                            RvmSerializedDb_ns_SurfaceShader shader = (RvmSerializedDb_ns_SurfaceShader)rvmArray.Array[0];
+                            shader.PermutationSet = permutationSets[shader.Guid];
+                        }
                     }
                 }
+
+                //string filePath = @"E:\C#\Frosty\FrostyToolSuite\FrostyEditor\bin\Developer\Debug\Data\RvmCityHashComparison.csv";
+                //using (StreamWriter writer = new StreamWriter(filePath))
+                //{
+                //    writer.WriteLine("Key,RealCityHash,ReadCityHash,TypeHash,TypeName"); // CSV header
+
+                //    foreach (var kvp in tempCityHashReadValues.Where(kvp => kvp.Value.Item2 != 0))
+                //    {
+                //        writer.WriteLine($"{kvp.Key},{kvp.Value.Item1},{kvp.Value.Item2},{kvp.Value.Item3},{kvp.Value.Item4}");
+                //    }
+                //}
 
                 Debug.Assert(reader.BaseStream.Position == Offset + startIndex);
             }
@@ -375,7 +453,7 @@ namespace AutoBundleManagerPlugin
                 NameHash = reader.ReadUInt();
                 Count = reader.ReadUInt();
                 Index = reader.ReadULong();
-                Name = types.ContainsKey(NameHash) ? types[NameHash].Name : "UNKNOWNTYPE" + (TypeLibrary.GetType(NameHash) != null ? TypeLibrary.GetType(NameHash).Name : "");
+                Name = types.ContainsKey(NameHash) ? types[NameHash].Name : "UNKNOWNTYPE\t" + (TypeLibrary.GetType(NameHash) != null ? TypeLibrary.GetType(NameHash).Name : "");
             }
         }
         public class RvmTypeDataPrIdExtension : PrIdExtension
@@ -390,31 +468,31 @@ namespace AutoBundleManagerPlugin
         {
             [EbxFieldMeta(EbxFieldType.String)]
             public string TypeName { get; set; }
-            [IsHidden]
-            public uint typeHash { get; set; }
+            //[IsHidden]
+            //public uint typeHash { get; set; }
             [EbxFieldMeta(EbxFieldType.Int64)]
             public long ByteSize { get; set; }
 
             [IsHidden]
             public List<ulong> CityHashes { get; set; }
 
-            [IsHidden]
-            public List<ulong> TempOriginalCityHashes { get; set; }
+            //[IsHidden]
+            //public List<ulong> TempOriginalCityHashes { get; set; }
 
             [EbxFieldMeta(EbxFieldType.Array)]
-            public List<List<RvmData>> Data { get; set; }
+            public List<RvmArray> Data { get; set; }
 
             public RvmDataContainer()
             {
-                Data = new List<List<RvmData>>();
+                Data = new List<RvmArray>();
             }
             public RvmDataContainer(string typeName, int count, Type rvmDataType, NativeReader reader, RvmCountManager countManager, uint typeHash)
             {
-                this.typeHash = typeHash;
+                //typeHash = typeHash;
                 TypeName = typeName;
-                Data = new List<List<RvmData>>();
+                Data = new List<RvmArray>();
                 CityHashes = new List<ulong>();
-                TempOriginalCityHashes = new List<ulong>();
+                //TempOriginalCityHashes = new List<ulong>();
                 long startOffset = reader.BaseStream.Position;
                 //if (TypeLibrary.GetType(typeHash) != null)
                 //    App.Logger.Log($"{TypeLibrary.GetType(typeHash).Name}\t{RvmTypeSizesPreCache.rvmSizes[typeHash]}");
@@ -426,19 +504,27 @@ namespace AutoBundleManagerPlugin
                     for (int y = 0; y < arrayCount; y++)
                     {
                         RvmData rvmData = (RvmData)Activator.CreateInstance(rvmDataType);
+                        rvmData.expectedSize = RvmStaticVariables.rvmSizes[typeHash];
 
                         long preReadOffset = reader.BaseStream.Position;
                         if (rvmData.GetType().Name == "UnknownRvmType")
-                            ((UnknownRvmType)rvmData).ReadFixed(reader, RvmTypeSizesPreCache.rvmSizes[typeHash]);
+                        {
+                            ((UnknownRvmType)rvmData).ReadFixed(reader, RvmStaticVariables.rvmSizes[typeHash]);
+                            ((UnknownRvmType)rvmData).TypeRealName = typeName;
+                        }
                         else
                             rvmData.Read(reader);
-                        int readSize = (int)(reader.BaseStream.Position - preReadOffset);
+                        if ((int)(reader.BaseStream.Position - preReadOffset) != rvmData.expectedSize)
+                            throw new Exception($"Read {typeName} incorrectly");
+
+
+
                         reader.BaseStream.Position = preReadOffset;
-                        rvmData.cityHash = CityHash.HashWithSeed64(reader.ReadBytes(readSize), typeHash) & 0x000000ffffffffff;
+                        rvmData.cityHash = CityHash.HashWithSeed64(reader.ReadBytes(rvmData.expectedSize), typeHash) & 0x000000ffffffffff;
                         ByteSize = reader.BaseStream.Position - startOffset;
 
                         reader.BaseStream.Position = preReadOffset;
-                        rvmData.originalBytes = reader.ReadBytes(readSize);
+                        rvmData.originalBytes = reader.ReadBytes(rvmData.expectedSize);
 
                         rvmDatas.Add(rvmData);
                     }
@@ -446,11 +532,29 @@ namespace AutoBundleManagerPlugin
                     reader.BaseStream.Position = preReadArrayOffset;
 
                     ulong hash = CityHash.HashWithSeed64(reader.ReadBytes(readArraySize), typeHash);
-                    CityHashes.Add(hash & 0x000000ffffffffff);
-                    TempOriginalCityHashes.Add(hash);
-                    Data.Add(rvmDatas);
+                    CityHashes.Add(hash);
+                    //TempOriginalCityHashes.Add(hash);
+                    Data.Add(new RvmArray(rvmDatas));
                 }
                 ByteSize = reader.BaseStream.Position - startOffset;
+            }
+        }
+
+        [EbxClassMeta(EbxFieldType.Struct)]
+        public class RvmArray
+        {
+            [EbxFieldMeta(EbxFieldType.Boolean)]
+            public bool IsChild { get; set; }
+
+            [EbxFieldMeta(EbxFieldType.Array)]
+            public List<RvmData> Array { get; set; }
+            public RvmArray()
+            {
+                Array = new List<RvmData>();
+            }
+            public RvmArray(List<RvmData> array) 
+            {
+                Array = array;
             }
         }
         public class RvmDataContainerPrIdExtension : PrIdExtension

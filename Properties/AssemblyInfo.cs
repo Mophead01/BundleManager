@@ -1,5 +1,6 @@
 ﻿using AutoBundleManagerPlugin;
 using AutoBundleManagerPlugin.Logic.Operations;
+using AutoBundleManagerPlugin.Rvm;
 using Frosty.Core.Attributes;
 using FrostySdk;
 using System.Reflection;
@@ -50,3 +51,4 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmComparerMenuExtension))]
 [assembly: RegisterPointerRefIdOverride("RvmTypeData", typeof(RvmEditor.RvmTypeDataPrIdExtension), true, 0)]
 [assembly: RegisterPointerRefIdOverride("RvmDataContainer", typeof(RvmEditor.RvmDataContainerPrIdExtension), true, 0)]
+[assembly: RegisterPointerRefIdOverride("RvmSerializedDb_ns_SurfaceShader", typeof(RvmSerializedDb_ns_SurfaceShaderPrIdExtension), true, 0)]
