@@ -57,7 +57,7 @@ namespace AutoBundleManagerPlugin.Rvm
 
         public static Dictionary<uint, string> textureHashToNames = App.AssetManager.EnumerateEbx().Where(ebxEntry => TypeLibrary.IsSubClassOf(ebxEntry.Type, "TextureBaseAsset")).ToDictionary(ebxEntry => (uint)Utils.HashString(ebxEntry.Name, true), ebxEntry => ebxEntry.Name);
         public static Dictionary<uint, string> shaderHashToNames = App.AssetManager.EnumerateEbx().Where(ebxEntry => TypeLibrary.IsSubClassOf(ebxEntry.Type, "SurfaceShaderBaseAsset")).ToDictionary(ebxEntry => (uint)Utils.HashString(ebxEntry.Name, true), ebxEntry => ebxEntry.Name);
-        public abstract void Read(NativeReader reader);
+        public abstract void ReadStruct(NativeReader reader);
     }
 
     [EbxClassMeta(EbxFieldType.Struct)]
@@ -65,7 +65,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x80); //Might be 0x30
         }
@@ -82,7 +82,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public float Z { get; set; }
         [EbxFieldMeta(EbxFieldType.Float32)]
         public float W { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             X = reader.ReadUInt();
             Y = reader.ReadUInt();
@@ -97,7 +97,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x20);
         }
@@ -128,7 +128,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk3 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x20);
             _dx11ByteCodeElement = new RvmReference(reader);
@@ -151,7 +151,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public ushort ElementCount { get; set; }
         [EbxFieldMeta(EbxFieldType.UInt16)]
         public ushort LegacyHigh { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Hash = reader.ReadULong();
             TypeHash = reader.ReadUInt();
@@ -168,7 +168,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Matrix { get; set; }
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Rest { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Matrix = reader.ReadBytes(0x40);
             Rest = reader.ReadBytes(0x50);
@@ -181,7 +181,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x10);
         }
@@ -193,7 +193,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x40);
         }
@@ -205,7 +205,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x90);
         }
@@ -217,7 +217,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x140); // 4x4 matrix and some other stuff
         }
@@ -233,7 +233,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash { get { return _hash == null ? new List<RvmData>() : _hash.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -250,7 +250,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash { get { return _hash == null ? new List<RvmData>() : _hash.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -270,7 +270,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RvmSlotHandle { get { return _rvmSlotHandle == null ? new List<RvmData>() : _rvmSlotHandle.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadULong();
             _rvmSlotHandle = new RvmReference(reader);
@@ -323,7 +323,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RvmDispatch { get { return _rvmDispatch == null ? new List<RvmData>() : _rvmDispatch.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Guid = reader.ReadGuid();
             Index1 = reader.ReadUShort();
@@ -344,7 +344,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Int { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Int = reader.ReadULong();
         }
@@ -371,7 +371,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _runtimeInstantiatedType = new RvmReference(reader);
             _instructionRef = new RvmReference(reader);
@@ -410,7 +410,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> ParamDbSerializedFilterView { get { return _paramDbSerializedFilterView == null ? new List<RvmData>() : _paramDbSerializedFilterView.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadULong();
             _instructionBatchRef = new RvmReference(reader);
@@ -440,7 +440,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _tableAssemblyData = new RvmReference(reader);
             _writeOp = new RvmReference(reader);
@@ -501,7 +501,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public RvmSerializedDb_ns_RvmPermutationSet PermutationSet { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             SharedStreamableTextureRef = reader.ReadULong();
             NameHash = reader.ReadUInt();
@@ -577,7 +577,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk4 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadULong();
             Unk2 = reader.ReadULong();
@@ -606,7 +606,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _paramDbKeyRef = new RvmReference(reader);
             _hash1 = new RvmReference(reader);
@@ -624,7 +624,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -649,7 +649,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _unk1 = new RvmReference(reader);
             _dx11ByteCodeElement = new RvmReference(reader);
@@ -673,7 +673,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadULong();
             _hash = new RvmReference(reader);
@@ -691,7 +691,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -701,12 +701,14 @@ namespace AutoBundleManagerPlugin.Rvm
     [EbxClassMeta(EbxFieldType.Struct)]
     public class RvmSerializedDb_ns_Dx11BlendStateData : RvmData
     {
-        [EbxFieldMeta(EbxFieldType.DbObject)]
-        public byte[] Dx11SerializedBlendStates { get; set; }
+        [EbxFieldMeta(EbxFieldType.Array)]
+        public List<RvmReference> Dx11SerializedBlendStates { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
-            Dx11SerializedBlendStates = reader.ReadBytes(4096);
+            Dx11SerializedBlendStates = new List<RvmReference>();
+            for (int i = 0; i < 512; i++)
+                Dx11SerializedBlendStates.Add(new RvmReference(reader));
         }
     }
 
@@ -725,7 +727,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _paramDbSerializedReadView = new RvmReference(reader);
             Unk1 = reader.ReadULong();
@@ -749,7 +751,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RvmSlotHandle2 => _rvmSlotHandle2?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _rvmSlotHandle1 = new RvmReference(reader);
             _rvmSlotHandle2 = new RvmReference(reader);
@@ -775,7 +777,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _unk1 = new RvmReference(reader);
             _hash = new RvmReference(reader);
@@ -796,7 +798,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
             Unk1 = reader.ReadULong();
@@ -813,7 +815,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -903,7 +905,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> ParamDbSerializedHashViewRef => _paramDbSerializedHashViewRef?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Guid = reader.ReadGuid();
             Unk1 = reader.ReadUShort();
@@ -935,7 +937,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -960,7 +962,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk3 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _paramDbKeyRef = new RvmReference(reader);
             _paramDbKeyRef2 = new RvmReference(reader);
@@ -987,7 +989,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk3 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadULong();
             _instructionBatchRef = new RvmReference(reader);
@@ -1018,7 +1020,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> CombinedSerializedParameterBlock => _combinedSerializedParameterBlock?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _unk1 = new RvmReference(reader);
             _unk2 = new RvmReference(reader);
@@ -1036,7 +1038,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -1055,7 +1057,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _paramDbKeyRef = new RvmReference(reader);
             Unk2 = reader.ReadULong();
@@ -1072,7 +1074,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RttiType => _rttiType?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _rttiType = new RvmReference(reader);
         }
@@ -1239,7 +1241,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint InstanceDataStepRate { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _semanticName = new RvmReference(reader);
             SemanticIndex = reader.ReadUInt();
@@ -1266,7 +1268,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash2 => _hash2?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash1 = new RvmReference(reader);
             _hash2 = new RvmReference(reader);
@@ -1286,7 +1288,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _paramDbKeyRef = new RvmReference(reader);
             Unk2 = reader.ReadULong();
@@ -1309,7 +1311,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash2 => _hash2?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash1 = new RvmReference(reader);
             _hash2 = new RvmReference(reader);
@@ -1326,7 +1328,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -1340,7 +1342,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Hash { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Hash = reader.ReadULong();
         }
@@ -1361,7 +1363,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RvmSlotHandle2 => _rvmSlotHandle2?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _rvmSlotHandle1 = new RvmReference(reader);
             _rvmSlotHandle2 = new RvmReference(reader);
@@ -1390,7 +1392,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash1 { get { if (_hash1 == null) return new List<RvmData>(); else return _hash1.ReferenceArray; } }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadUInt();
             Unk2 = reader.ReadUInt();
@@ -1408,7 +1410,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -1430,7 +1432,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> RvmSlotHandle2 => _rvmSlotHandle2?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _rvmSlotHandle1 = new RvmReference(reader);
             _rvmSlotHandle2 = new RvmReference(reader);
@@ -1447,7 +1449,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _hash = new RvmReference(reader);
         }
@@ -1469,7 +1471,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Name => _name?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _moduleName = new RvmReference(reader);
             _name = new RvmReference(reader);
@@ -1498,7 +1500,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> WriteOpGroup => _writeOpGroup?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _tableAssemblyData = new RvmReference(reader);
             _hash1 = new RvmReference(reader);
@@ -1522,7 +1524,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt16)]
         public ushort Unk4 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadUShort();
             Unk2 = reader.ReadUShort();
@@ -1537,7 +1539,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.Int32)]
         public int Int { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Int = reader.ReadInt();
         }
@@ -1568,7 +1570,7 @@ namespace AutoBundleManagerPlugin.Rvm
     {
         [EbxFieldMeta(EbxFieldType.Enum)]
         public ShaderDepthBiasGroupEnum Enum { get; set; }
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Enum = (ShaderDepthBiasGroupEnum)reader.ReadInt();
         }
@@ -1595,7 +1597,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint ExternalHash { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             TexCoordsPerMeter = reader.ReadFloat();
             Unk1 = reader.ReadUShort();
@@ -1616,7 +1618,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1628,7 +1630,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1640,7 +1642,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1667,7 +1669,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint ExternalHash { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             TexCoordsPerMeter = reader.ReadFloat();
             Unk1 = reader.ReadUShort();
@@ -1688,7 +1690,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x0C);
         }
@@ -1700,7 +1702,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Float32)]
         public float Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadFloat();
         }
@@ -1713,7 +1715,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1726,7 +1728,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1739,7 +1741,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1752,7 +1754,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1765,7 +1767,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1778,7 +1780,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1791,7 +1793,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x14);
         }
@@ -1804,7 +1806,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x88);
         }
@@ -1818,7 +1820,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1831,7 +1833,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -1844,7 +1846,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x0C);
         }
@@ -1857,7 +1859,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x14);
         }
@@ -1870,7 +1872,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x14);
         }
@@ -1883,7 +1885,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(8);
         }
@@ -1896,7 +1898,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(8);
         }
@@ -1909,7 +1911,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x14);
         }
@@ -1922,7 +1924,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x24);
         }
@@ -1935,7 +1937,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(4);
         }
@@ -1948,7 +1950,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x0C);
         }
@@ -1961,7 +1963,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Index { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Index = reader.ReadUInt();
         }
@@ -1974,7 +1976,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x0C);
         }
@@ -1987,7 +1989,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadUInt();
         }
@@ -2000,7 +2002,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x0C);
         }
@@ -2013,7 +2015,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x38);
         }
@@ -2026,7 +2028,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt16)]
         public ushort Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUShort();
         }
@@ -2039,7 +2041,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(2);
         }
@@ -2052,7 +2054,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x54);
         }
@@ -2065,7 +2067,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(2);
         }
@@ -2078,7 +2080,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadUInt();
         }
@@ -2091,7 +2093,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt8)]
         public byte Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadByte();
         }
@@ -2104,7 +2106,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt8)]
         public byte Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadByte();
         }
@@ -2117,7 +2119,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0x100);
         }
@@ -2130,7 +2132,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Unk1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadBytes(3);
         }
@@ -2143,7 +2145,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt8)]
         public byte Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadByte();
         }
@@ -2156,7 +2158,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(6);
         }
@@ -2169,7 +2171,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Boolean)]
         public bool Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadBoolean();
         }
@@ -2182,7 +2184,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = reader.ReadUInt();
         }
@@ -2194,7 +2196,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.String)]
         public char Value { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Value = (char)reader.ReadByte();
         }
@@ -2215,7 +2217,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x10);
             _reference1 = new RvmReference(reader);
@@ -2236,7 +2238,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x20);
@@ -2256,7 +2258,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x10);
@@ -2276,7 +2278,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x10);
@@ -2293,7 +2295,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
         }
@@ -2323,7 +2325,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
             _reference2 = new RvmReference(reader);
@@ -2375,7 +2377,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1Ref = new RvmReference(reader);
             _reference2Ref = new RvmReference(reader);
@@ -2401,10 +2403,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
-        [IsHidden]
-        public RvmReference _data1Ref { get; set; }
-
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1Ref = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x08);
@@ -2427,7 +2426,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x08);
             _reference1Ref = new RvmReference(reader);
@@ -2451,7 +2450,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x50);
             _reference1Ref = new RvmReference(reader);
@@ -2469,7 +2468,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.Struct)]
         public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             _reference1 = new RvmReference(reader);
         }
@@ -2492,13 +2491,214 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x08);
             _reference1 = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x18);
         }
     }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12NvLegacyDrawStateBuilderInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data1 { get; set; }
+
+        [IsHidden]
+        public RvmReference _reference1 { get; set; }
+
+        [EbxFieldMeta(EbxFieldType.Struct)]
+        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data2 { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data1 = reader.ReadBytes(0x50);
+            _reference1 = new RvmReference(reader);
+            Data2 = reader.ReadBytes(0x40);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12NvLegacyDrawStateBuilderInstructionBatchData : RvmData
+    {
+        [IsHidden]
+        public RvmReference _reference1 { get; set; }
+
+        [EbxFieldMeta(EbxFieldType.Struct)]
+        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            _reference1 = new RvmReference(reader);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12NvDescriptorTableAssemblyInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.Struct)]
+        public RvmReference _reference1Ref { get; set; }
+
+        [EbxFieldMeta(EbxFieldType.Struct)]
+        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data1 { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            _reference1Ref = new RvmReference(reader);
+            Data1 = reader.ReadBytes(0x18);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12BinaryBlob : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x100);
+        }
+    }
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12PcSampler : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x40);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RenderDepthMode : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x4);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12NvConstantBufferAssemblyInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x14);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class Float32 : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x4);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12ViewStateInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x14);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12NvDescriptorTable : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x8);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12RootWriteOp : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x8);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class Uint16 : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x2);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12PcShaderDispatchDrawInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x24);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class Uint8 : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x1);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx12ShaderState : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x1);
+        }
+    }
+
 
 
 
@@ -2510,7 +2710,7 @@ namespace AutoBundleManagerPlugin.Rvm
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data { get; set; }
 
-        public override void Read(NativeReader reader)
+        public override void ReadStruct(NativeReader reader)
         {
             Data = reader.ReadBytes(0);
         }
