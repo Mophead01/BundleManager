@@ -23,7 +23,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 {
     public class FbmodParsing
     {
-        private static int cacheVersion = 3;
+        private static int cacheVersion = 4;
         protected static int HashBundle(BundleEntry bentry)
         {
             return HashBundle(bentry.Name);
@@ -101,7 +101,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 writer.Write(ContainsModifiedData);
                 if (ContainsModifiedData)
                 {
-                    writer.WriteNullTerminatedString(Type);
+                    writer.Write((uint)Utils.HashString(Type, true));
                     writer.Write(HasHandler);
                     writer.Write(FileGuid);
                     writer.Write(Hash);
@@ -114,7 +114,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 ContainsModifiedData = reader.ReadBoolean();
                 if (ContainsModifiedData)
                 {
-                    Type = reader.ReadNullTerminatedString();
+                    Type = typeHashesToNames[(uint)reader.ReadUInt()];
                     HasHandler = reader.ReadBoolean();
                     FileGuid = reader.ReadGuid();
                     Hash = reader.ReadSha1();

@@ -38,7 +38,7 @@ namespace AutoBundleManagerPlugin
 
             public override string SubLevelMenuName => SubBMMenuName;
 
-            public override string MenuItemName => "Temp: Complete Bundles";
+            public override string MenuItemName => "Complete Bundles (Local)";
 
             public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
 
@@ -66,13 +66,47 @@ namespace AutoBundleManagerPlugin
             });
 
         }
+        public class AutoBundleManagerCompleteGlobalBundlesBundlesMenuExtension : MenuExtension
+        {
+            public override string TopLevelMenuName => BMMenuName;
+
+            public override string SubLevelMenuName => SubBMMenuName;
+
+            public override string MenuItemName => "Complete Bundles (Global)";
+
+            public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
+
+            public override RelayCommand MenuItemClicked => new RelayCommand((o) =>
+            {
+                string editorModName = "KyberMod.fbmod";
+                string basePath = $@"{(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)).Replace("\\", @"/").Replace("/Plugins", "")}/Mods/Kyber";
+                List<string> fbmodNames = KyberIntegration.GetLoadOrder(basePath).Select(shortName => $"{basePath}/{shortName}").ToList();
+                editorModName = $"{basePath}/{editorModName}";
+
+                //foreach (string fbmodName in fbmodNames)
+                //{
+                //    if (fbmodName != editorModName)
+                //        new FbmodParsing(fbmodName);
+                //}
+                //AbmDependenciesCache.UpdateCache();
+                //AbmDependenciesCache.WriteToXml();
+
+                FrostyTaskWindow.Show("Completing Bundles", "", (task) =>
+                {
+                    new BundleCompleter().CompleteBundles(task, ExportType.ExportOnly, editorModName, new List<string>());
+                });
+                AbmDependenciesCache.WriteToXml();
+                App.EditorWindow.DataExplorer.RefreshAll();
+            });
+
+        }
         public class AutoBundleManagerClearBundlesBundlesMenuExtension : MenuExtension
         {
             public override string TopLevelMenuName => BMMenuName;
 
             public override string SubLevelMenuName => SubBMMenuName;
 
-            public override string MenuItemName => "Temp: Clear Bundles";
+            public override string MenuItemName => "Clear Bundles";
 
             public override ImageSource Icon => new ImageSourceConverter().ConvertFromString("pack://application:,,,/FrostyEditor;component/Images/Compile.png") as ImageSource;
 

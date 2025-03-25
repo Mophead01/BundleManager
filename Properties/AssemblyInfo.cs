@@ -35,7 +35,10 @@ using System.Windows;
 
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmOptionsMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerCompleteBundlesBundlesMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerCompleteGlobalBundlesBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerClearBundlesBundlesMenuExtension))]
+
+#if false
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheBundleHierarchyMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheNetworkRegistriesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheMeshVariationDatabasesMenuExtension))]
@@ -52,6 +55,9 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmComparerMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmExportHeaderTypesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmVerifyRefTypesMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(RvmEditor.RvmExtractShaderMenuExtension))]
+[assembly: RegisterMenuExtension(typeof(RvmEditor.RvmTestWriterBespinMenuExtension))]
 [assembly: RegisterPointerRefIdOverride("RvmTypeData", typeof(RvmEditor.RvmTypeDataPrIdExtension), true, 0)]
 [assembly: RegisterPointerRefIdOverride("RvmDataContainer", typeof(RvmEditor.RvmDataContainerPrIdExtension), true, 0)]
 [assembly: RegisterPointerRefIdOverride("RvmSerializedDb_ns_SurfaceShader", typeof(RvmSerializedDb_ns_SurfaceShaderPrIdExtension), true, 0)]
+#endif

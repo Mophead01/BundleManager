@@ -228,14 +228,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_DefaultValueRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _defaultValue { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash { get { return _hash == null ? new List<RvmData>() : _hash.ReferenceArray; } }
+        public List<RvmData> DefaultValue { get { return _defaultValue == null ? new List<RvmData>() : _defaultValue.ReferenceArray; } }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _defaultValue = new RvmReference(reader);
         }
     }
 
@@ -245,14 +245,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_InstructionBatchRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _instructionBatch { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash { get { return _hash == null ? new List<RvmData>() : _hash.ReferenceArray; } }
+        public List<RvmData> InstructionBatch { get { return _instructionBatch == null ? new List<RvmData>() : _instructionBatch.ReferenceArray; } }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _instructionBatch = new RvmReference(reader);
         }
     }
 
@@ -312,10 +312,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> RvmContextSortKeyInfo { get { return _rvmContextSortKeyInfo == null ? new List<RvmData>() : _rvmContextSortKeyInfo.ReferenceArray; } }
 
         [IsHidden]
-        public RvmReference _hash3 { get; set; }
+        public RvmReference _rvmFunctionInputTableIndices { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash3 { get { return _hash3 == null ? new List<RvmData>() : _hash3.ReferenceArray; } }
+        public List<RvmData> RvmFunctionInputTableIndices { get { return _rvmFunctionInputTableIndices == null ? new List<RvmData>() : _rvmFunctionInputTableIndices.ReferenceArray; } }
 
         [IsHidden]
         public RvmReference _rvmDispatch { get; set; }
@@ -333,7 +333,7 @@ namespace AutoBundleManagerPlugin.Rvm
             Unk3 = reader.ReadUShort();
             _rvmFunctionInstanceRef = new RvmReference(reader);
             _rvmContextSortKeyInfo = new RvmReference(reader);
-            _hash3 = new RvmReference(reader);
+            _rvmFunctionInputTableIndices = new RvmReference(reader);
             _rvmDispatch = new RvmReference(reader);
         }
     }
@@ -465,7 +465,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public uint Padding { get; set; }
 
         [EbxFieldMeta(EbxFieldType.UInt64)]
-        public ulong ShaderStreamableExternalTextureRef { get; set; }
+        public ulong Unk4 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.UInt32)]
         public uint Unk1 { get; set; }
@@ -474,16 +474,16 @@ namespace AutoBundleManagerPlugin.Rvm
         public uint Unk2 { get; set; }
 
         [IsHidden]
-        public RvmReference _hash3Ref { get; set; }
+        public RvmReference _shaderStreamableTextureRef { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash3 => _hash3Ref?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ShaderStreamableTextureRef => _shaderStreamableTextureRef?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash4Ref { get; set; }
+        public RvmReference _shaderStreamableExternalTextureRef { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash4 => _hash4Ref?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ShaderStreamableExternalTextureRef => _shaderStreamableExternalTextureRef?.ReferenceArray ?? new List<RvmData>();
 
         /// <summary>
         /// Found in SBD next to Guid
@@ -506,11 +506,11 @@ namespace AutoBundleManagerPlugin.Rvm
             SharedStreamableTextureRef = reader.ReadULong();
             NameHash = reader.ReadUInt();
             Padding = reader.ReadUInt();
-            ShaderStreamableExternalTextureRef = reader.ReadULong();
+            Unk4 = reader.ReadULong();
             Unk1 = reader.ReadUInt();
             Unk2 = reader.ReadUInt();
-            _hash3Ref = new RvmReference(reader);
-            _hash4Ref = new RvmReference(reader);
+            _shaderStreamableTextureRef = new RvmReference(reader);
+            _shaderStreamableExternalTextureRef = new RvmReference(reader);
             Unk3 = reader.ReadUInt();
             Padding2 = reader.ReadBytes(12);
             Guid = reader.ReadGuid();
@@ -598,10 +598,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> ParamDbKeyRef => _paramDbKeyRef?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash1 { get; set; }
+        public RvmReference _defaultValueRef { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash1 => _hash1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> DefaultValueRef => _defaultValueRef?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk1 { get; set; }
@@ -609,7 +609,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             _paramDbKeyRef = new RvmReference(reader);
-            _hash1 = new RvmReference(reader);
+            _defaultValueRef = new RvmReference(reader);
             Unk1 = reader.ReadULong();
         }
     }
@@ -619,14 +619,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_RvmFunctionInputTableIndices : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _uint16 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Uint16 => _uint16?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _uint16 = new RvmReference(reader);
         }
     }
 
@@ -686,14 +686,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_SerializedParameterBlockRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _serializedParameterBlock { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Hash => _serializedParameterBlock?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _serializedParameterBlock = new RvmReference(reader);
         }
     }
 
@@ -769,10 +769,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> Unk1 => _unk1?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _dx11ByteCodeElement { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx11ByteCodeElement => _dx11ByteCodeElement?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.UInt64)]
         public ulong Unk2 { get; set; }
@@ -780,7 +780,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             _unk1 = new RvmReference(reader);
-            _hash = new RvmReference(reader);
+            _dx11ByteCodeElement = new RvmReference(reader);
             Unk2 = reader.ReadULong();
         }
     }
@@ -810,14 +810,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_RvmPermutationRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _rvmPermutation { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> RvmPermutation => _rvmPermutation?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _rvmPermutation = new RvmReference(reader);
         }
     }
 
@@ -876,10 +876,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> ParamDbHash => _paramDbHash?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash4 { get; set; }
+        public RvmReference _uint16 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash4 => _hash4?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Uint16 => _uint16?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
         public RvmReference _unk7 { get; set; }
@@ -894,10 +894,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> Unk8 => _unk8?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash5 { get; set; }
+        public RvmReference _serializedParameterBlock { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash5 => _hash5?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> SerializedParameterBlock => _serializedParameterBlock?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
         public RvmReference _paramDbSerializedHashViewRef { get; set; }
@@ -919,10 +919,10 @@ namespace AutoBundleManagerPlugin.Rvm
             _permutationRef = new RvmReference(reader);
             _permutationLookupTable = new RvmReference(reader);
             _paramDbHash = new RvmReference(reader);
-            _hash4 = new RvmReference(reader);
+            _uint16 = new RvmReference(reader);
             _unk7 = new RvmReference(reader);
             _unk8 = new RvmReference(reader);
-            _hash5 = new RvmReference(reader);
+            _serializedParameterBlock = new RvmReference(reader);
             _paramDbSerializedHashViewRef = new RvmReference(reader);
         }
     }
@@ -932,14 +932,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_ShaderStreamableTextureRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _shaderStreamableTexture { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ShaderStreamableTexture => _shaderStreamableTexture?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _shaderStreamableTexture = new RvmReference(reader);
         }
     }
 
@@ -1009,10 +1009,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> Unk1 => _unk1?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _unk2 { get; set; }
+        public RvmReference _rvmFunction { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Unk2 => _unk2?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> RvmFunction => _rvmFunction?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
         public RvmReference _combinedSerializedParameterBlock { get; set; }
@@ -1023,7 +1023,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             _unk1 = new RvmReference(reader);
-            _unk2 = new RvmReference(reader);
+            _rvmFunction = new RvmReference(reader);
             _combinedSerializedParameterBlock = new RvmReference(reader);
         }
     }
@@ -1033,14 +1033,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_ParamDbSerializedHashViewRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _paramDbSerializedHashView { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ParamDbSerializedHashView => _paramDbSerializedHashView?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _paramDbSerializedHashView = new RvmReference(reader);
         }
     }
 
@@ -1257,21 +1257,21 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_CombinedSerializedParameterBlock : RvmData
     {
         [IsHidden]
-        public RvmReference _hash1 { get; set; }
+        public RvmReference _serializedParameterBlockRef { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash1 => _hash1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> SerializedParameterBlockRef => _serializedParameterBlockRef?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash2 { get; set; }
+        public RvmReference _probablyUnused { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash2 => _hash2?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ProbablyUnused => _probablyUnused?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash1 = new RvmReference(reader);
-            _hash2 = new RvmReference(reader);
+            _serializedParameterBlockRef = new RvmReference(reader);
+            _probablyUnused = new RvmReference(reader);
         }
     }
 
@@ -1300,21 +1300,21 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx11ApplyParametersInstructionData : RvmData
     {
         [IsHidden]
-        public RvmReference _hash1 { get; set; }
+        public RvmReference _dx11ApplyParametersBlock { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash1 => _hash1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx11ApplyParametersBlock => _dx11ApplyParametersBlock?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash2 { get; set; }
+        public RvmReference _rvmSlotHandle { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash2 => _hash2?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> RvmSlotHandle => _rvmSlotHandle?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash1 = new RvmReference(reader);
-            _hash2 = new RvmReference(reader);
+            _dx11ApplyParametersBlock = new RvmReference(reader);
+            _rvmSlotHandle = new RvmReference(reader);
         }
     }
 
@@ -1323,14 +1323,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_RvmFunctionInstanceRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _rvmFunctionInstance { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> RvmFunctionInstance => _rvmFunctionInstance?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _rvmFunctionInstance = new RvmReference(reader);
         }
     }
 
@@ -1387,17 +1387,17 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> DataBaseName { get { if (_databaseNameRef == null) return new List<RvmData>(); else return _databaseNameRef.ReferenceArray; } }
 
         [IsHidden]
-        public RvmReference _hash1 { get; set; }
+        public RvmReference _dataBaseShortName { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash1 { get { if (_hash1 == null) return new List<RvmData>(); else return _hash1.ReferenceArray; } }
+        public List<RvmData> DataBaseShortName { get { if (_dataBaseShortName == null) return new List<RvmData>(); else return _dataBaseShortName.ReferenceArray; } }
 
         public override void ReadStruct(NativeReader reader)
         {
             Unk1 = reader.ReadUInt();
             Unk2 = reader.ReadUInt();
             _databaseNameRef = new RvmReference(reader);
-            _hash1 = new RvmReference(reader);
+            _dataBaseShortName = new RvmReference(reader);
         }
     }
 
@@ -1405,14 +1405,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_ShaderStreamableExternalTextureRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _shaderStreamableExternalTexture { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> ShaderStreamableExternalTexture => _shaderStreamableExternalTexture?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _shaderStreamableExternalTexture = new RvmReference(reader);
         }
     }
 
@@ -1444,14 +1444,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_ParamDbKeyRef : RvmData
     {
         [IsHidden]
-        public RvmReference _hash { get; set; }
+        public RvmReference _serializedParamDbKey { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash => _hash?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> SerializedParamDbKey => _serializedParamDbKey?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _hash = new RvmReference(reader);
+            _serializedParamDbKey = new RvmReference(reader);
         }
     }
 
@@ -1489,10 +1489,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public List<RvmData> TableAssemblyData => _tableAssemblyData?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
-        public RvmReference _hash1 { get; set; }
+        public RvmReference _writeOp { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Hash1 => _hash1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> WriteOp => _writeOp?.ReferenceArray ?? new List<RvmData>();
 
         [IsHidden]
         public RvmReference _writeOpGroup { get; set; }
@@ -1503,7 +1503,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             _tableAssemblyData = new RvmReference(reader);
-            _hash1 = new RvmReference(reader);
+            _writeOp = new RvmReference(reader);
             _writeOpGroup = new RvmReference(reader);
         }
     }
@@ -2209,10 +2209,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _preparedVertexStream { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> PreparedVertexStream => _preparedVertexStream?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
@@ -2220,7 +2220,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x10);
-            _reference1 = new RvmReference(reader);
+            _preparedVertexStream = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x08);
         }
     }
@@ -2233,14 +2233,14 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12BinaryBlob { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx12BinaryBlob => _dx12BinaryBlob?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12BinaryBlob = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x20);
         }
     }
@@ -2253,14 +2253,14 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12RootWriteOp { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx12RootWriteOp => _dx12RootWriteOp?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12RootWriteOp = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x10);
         }
     }
@@ -2273,14 +2273,14 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12PcSamplerPointer { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx12PcSamplerPointer => _dx12PcSamplerPointer?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12PcSamplerPointer = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x10);
         }
     }
@@ -2290,14 +2290,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12PcSamplerPointer : RvmData
     {
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12PcSampler { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> Dx12PcSampler => _dx12PcSampler?.ReferenceArray ?? new List<RvmData>();
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12PcSampler = new RvmReference(reader);
         }
     }
 
@@ -2305,31 +2305,31 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12PcRvmDescriptorTableAssemblyInstructionData : RvmData
     {
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _tableAssemblyData { get; set; }
 
         [IsHidden]
-        public RvmReference _reference2 { get; set; }
+        public RvmReference _writeOp { get; set; }
 
         [IsHidden]
-        public RvmReference _reference3 { get; set; }
+        public RvmReference _writeOpGroup { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> TableAssemblyData => _tableAssemblyData?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference2 => _reference2?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> WriteOp => _writeOp?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference3 => _reference3?.ReferenceArray ?? new List<RvmData>();
+        public List<RvmData> WriteOpGroup => _writeOpGroup?.ReferenceArray ?? new List<RvmData>();
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
-            _reference2 = new RvmReference(reader);
-            _reference3 = new RvmReference(reader);
+            _tableAssemblyData = new RvmReference(reader);
+            _writeOp = new RvmReference(reader);
+            _writeOpGroup = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x08);
         }
     }
@@ -2339,52 +2339,52 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12PcPSOPreloadOp : RvmData
     {
         [IsHidden]
-        public RvmReference _reference1Ref { get; set; }
+        public RvmReference _dx12PcRootSignature { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+        public List<RvmData> Dx12PcRootSignature => _dx12PcRootSignature == null ? new List<RvmData>() : _dx12PcRootSignature.ReferenceArray;
 
         [IsHidden]
-        public RvmReference _reference2Ref { get; set; }
+        public RvmReference _dx12InputElement { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference2 => _reference2Ref == null ? new List<RvmData>() : _reference2Ref.ReferenceArray;
+        public List<RvmData> Dx12InputElement => _dx12InputElement == null ? new List<RvmData>() : _dx12InputElement.ReferenceArray;
 
         [IsHidden]
-        public RvmReference _reference3Ref { get; set; }
+        public RvmReference _dx12Shader1 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference3 => _reference3Ref == null ? new List<RvmData>() : _reference3Ref.ReferenceArray;
+        public List<RvmData> Dx12Shader1 => _dx12Shader1 == null ? new List<RvmData>() : _dx12Shader1.ReferenceArray;
 
         [IsHidden]
-        public RvmReference _reference4Ref { get; set; }
+        public RvmReference _dx12Shader2 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference4 => _reference4Ref == null ? new List<RvmData>() : _reference4Ref.ReferenceArray;
+        public List<RvmData> Dx12Shader2 => _dx12Shader2 == null ? new List<RvmData>() : _dx12Shader2.ReferenceArray;
 
         [IsHidden]
-        public RvmReference _reference5Ref { get; set; }
+        public RvmReference _dx12Shader3 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference5 => _reference5Ref == null ? new List<RvmData>() : _reference5Ref.ReferenceArray;
+        public List<RvmData> Dx12Shader3 => _dx12Shader3 == null ? new List<RvmData>() : _dx12Shader3.ReferenceArray;
 
         [IsHidden]
-        public RvmReference _reference6Ref { get; set; }
+        public RvmReference _dx12Shader4 { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference6 => _reference6Ref == null ? new List<RvmData>() : _reference6Ref.ReferenceArray;
+        public List<RvmData> Dx12Shader4 => _dx12Shader4 == null ? new List<RvmData>() : _dx12Shader4.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1Ref = new RvmReference(reader);
-            _reference2Ref = new RvmReference(reader);
-            _reference3Ref = new RvmReference(reader);
-            _reference4Ref = new RvmReference(reader);
-            _reference5Ref = new RvmReference(reader);
-            _reference6Ref = new RvmReference(reader);
+            _dx12PcRootSignature = new RvmReference(reader);
+            _dx12InputElement = new RvmReference(reader);
+            _dx12Shader1 = new RvmReference(reader);
+            _dx12Shader2 = new RvmReference(reader);
+            _dx12Shader3 = new RvmReference(reader);
+            _dx12Shader4 = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x08);
         }
     }
@@ -2395,17 +2395,17 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12PcRootSignature : RvmData
     {
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public RvmReference _reference1Ref { get; set; }
+        public RvmReference _dx12BinaryBlob { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+        public List<RvmData> Dx12BinaryBlob => _dx12BinaryBlob == null ? new List<RvmData>() : _dx12BinaryBlob.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1Ref = new RvmReference(reader);
+            _dx12BinaryBlob = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x08);
         }
     }
@@ -2418,10 +2418,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1Ref { get; set; }
+        public RvmReference _rvmSlotHandle { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+        public List<RvmData> RvmSlotHandle => _rvmSlotHandle == null ? new List<RvmData>() : _rvmSlotHandle.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
@@ -2429,7 +2429,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x08);
-            _reference1Ref = new RvmReference(reader);
+            _rvmSlotHandle = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x08);
         }
     }
@@ -2442,10 +2442,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1Ref { get; set; }
+        public RvmReference _dx12InputElement { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+        public List<RvmData> Dx12InputElement => _dx12InputElement == null ? new List<RvmData>() : _dx12InputElement.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
@@ -2453,7 +2453,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x50);
-            _reference1Ref = new RvmReference(reader);
+            _dx12InputElement = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x30);
         }
     }
@@ -2463,14 +2463,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12LegacyDrawStateBuilderInstructionBatchData : RvmData
     {
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12LegacyDrawStateBuilderInstructionData { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+        public List<RvmData> Dx12LegacyDrawStateBuilderInstructionData => _dx12LegacyDrawStateBuilderInstructionData == null ? new List<RvmData>() : _dx12LegacyDrawStateBuilderInstructionData.ReferenceArray;
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12LegacyDrawStateBuilderInstructionData = new RvmReference(reader);
         }
     }
 
@@ -2483,10 +2483,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _charRvm { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+        public List<RvmData> CharRvm => _charRvm == null ? new List<RvmData>() : _charRvm.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
@@ -2494,7 +2494,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x08);
-            _reference1 = new RvmReference(reader);
+            _charRvm = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x18);
         }
     }
@@ -2506,10 +2506,10 @@ namespace AutoBundleManagerPlugin.Rvm
         public byte[] Data1 { get; set; }
 
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12InputElement { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+        public List<RvmData> Dx12InputElement => _dx12InputElement == null ? new List<RvmData>() : _dx12InputElement.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data2 { get; set; }
@@ -2517,7 +2517,7 @@ namespace AutoBundleManagerPlugin.Rvm
         public override void ReadStruct(NativeReader reader)
         {
             Data1 = reader.ReadBytes(0x50);
-            _reference1 = new RvmReference(reader);
+            _dx12InputElement = new RvmReference(reader);
             Data2 = reader.ReadBytes(0x40);
         }
     }
@@ -2526,14 +2526,14 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12NvLegacyDrawStateBuilderInstructionBatchData : RvmData
     {
         [IsHidden]
-        public RvmReference _reference1 { get; set; }
+        public RvmReference _dx12NvLegacyDrawStateBuilderInstructionData { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1 == null ? new List<RvmData>() : _reference1.ReferenceArray;
+        public List<RvmData> Dx12NvLegacyDrawStateBuilderInstructionData => _dx12NvLegacyDrawStateBuilderInstructionData == null ? new List<RvmData>() : _dx12NvLegacyDrawStateBuilderInstructionData.ReferenceArray;
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1 = new RvmReference(reader);
+            _dx12NvLegacyDrawStateBuilderInstructionData = new RvmReference(reader);
         }
     }
 
@@ -2541,17 +2541,17 @@ namespace AutoBundleManagerPlugin.Rvm
     public class RvmSerializedDb_ns_Dx12NvDescriptorTableAssemblyInstructionData : RvmData
     {
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public RvmReference _reference1Ref { get; set; }
+        public RvmReference _dx12NvDescriptorTable { get; set; }
 
         [EbxFieldMeta(EbxFieldType.Struct)]
-        public List<RvmData> Reference1 => _reference1Ref == null ? new List<RvmData>() : _reference1Ref.ReferenceArray;
+        public List<RvmData> Dx12NvDescriptorTable => _dx12NvDescriptorTable == null ? new List<RvmData>() : _dx12NvDescriptorTable.ReferenceArray;
 
         [EbxFieldMeta(EbxFieldType.DbObject)]
         public byte[] Data1 { get; set; }
 
         public override void ReadStruct(NativeReader reader)
         {
-            _reference1Ref = new RvmReference(reader);
+            _dx12NvDescriptorTable = new RvmReference(reader);
             Data1 = reader.ReadBytes(0x18);
         }
     }
@@ -2699,7 +2699,41 @@ namespace AutoBundleManagerPlugin.Rvm
         }
     }
 
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx11NvViewStateInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
 
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x8);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx11NvViewStateDepthInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x10);
+        }
+    }
+
+    [EbxClassMeta(EbxFieldType.Struct)]
+    public class RvmSerializedDb_ns_Dx11NvDrawStateInstructionData : RvmData
+    {
+        [EbxFieldMeta(EbxFieldType.DbObject)]
+        public byte[] Data { get; set; }
+
+        public override void ReadStruct(NativeReader reader)
+        {
+            Data = reader.ReadBytes(0x18);
+        }
+    }
 
 
     [EbxClassMeta(EbxFieldType.Struct)]
