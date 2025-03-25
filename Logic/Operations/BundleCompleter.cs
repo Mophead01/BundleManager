@@ -246,6 +246,8 @@ namespace AutoBundleManagerPlugin
                             parEntry = App.AssetManager.GetEbxEntry(modifiedEbx.FileGuid);
 
                         DependencyActiveData dependencies = AbmDependenciesCache.GetDependencies(parEntry, modifiedEbx.Hash);
+                        //UpdatedLoggedDependencies(parEntry, dependencies, modifiedEbx.HasHandler, new List<int>());
+                        //List<int> temp = modifiedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList();
                         UpdatedLoggedDependencies(parEntry, dependencies, modifiedEbx.HasHandler, modifiedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToList());
                     }
                     AbmDependenciesCache.UpdateCache();

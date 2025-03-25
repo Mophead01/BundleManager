@@ -37,6 +37,7 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerCompleteBundlesBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerCompleteGlobalBundlesBundlesMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerClearBundlesBundlesMenuExtension))]
+[assembly: RegisterExportAction(typeof(BundleManagerLaunchExportOverride), ExportType.ExportOnly, 15)]
 
 #if false
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCacheBundleHierarchyMenuExtension))]
@@ -49,7 +50,6 @@ using System.Windows;
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AutoBundleManagerTestChunkFirstMipH32MenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmDependenciesToXmlMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(AbmMenuExtensions.AbmCurrentProjectToCsvMenuExtension))]
-[assembly: RegisterExportAction(typeof(BundleManagerLaunchExportOverride), ExportType.ExportOnly, 15)]
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmViewerMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmWriterTestMenuExtension))]
 [assembly: RegisterMenuExtension(typeof(RvmEditor.RvmComparerMenuExtension))]

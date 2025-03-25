@@ -23,7 +23,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 {
     public class FbmodParsing
     {
-        private static int cacheVersion = 4;
+        private static int cacheVersion = 5;
         protected static int HashBundle(BundleEntry bentry)
         {
             return HashBundle(bentry.Name);
@@ -47,14 +47,16 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         public List<ParsedModifiedEbx> ParsedEbx = new List<ParsedModifiedEbx>();
         private List<ParsedModifiedRes> ParsedRes = new List<ParsedModifiedRes>();
         private List<ParsedModifiedChunk> ParsedChunks = new List<ParsedModifiedChunk>();
+        private List<string> BundleIndexOrder = new List<string>(); //List for storing bundle IDs so that the cache doesn't have to repeatedly read strings
         private class ParsedCustomBundle
         {
             public string Name;
             public BundleType Type;
             public int SuperBundleId;
+            private int indexOfBundleInOrder;
             public void WriteToCache(NativeWriter writer)
             {
-                writer.WriteNullTerminatedString(Name);
+                writer.Write(indexOfBundleInOrder);
                 writer.WriteNullTerminatedString(Type.ToString());
                 writer.Write(SuperBundleId);
                 //parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
@@ -70,10 +72,13 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                 SuperBundleId = bEntry.SuperBundleId;
                 if (!parser.adaptiveBundleHashesToIds.ContainsKey(HashBundle(Name)))
                     parser.adaptiveBundleHashesToIds.Add(HashBundle(Name), Name);
+                if (!parser.BundleIndexOrder.Contains(Name))
+                    parser.BundleIndexOrder.Add(Name);
+                indexOfBundleInOrder = parser.BundleIndexOrder.IndexOf(Name);
             }
             public ParsedCustomBundle(FbmodParsing parser, NativeReader reader)
             {
-                Name = reader.ReadNullTerminatedString();
+                Name = parser.BundleIndexOrder[reader.ReadInt()]; //Name = reader.ReadNullTerminatedString();
                 Type = (BundleType)Enum.Parse(typeof(BundleType), reader.ReadNullTerminatedString());
                 SuperBundleId = reader.ReadInt();
                 if (!parser.adaptiveBundleHashesToIds.ContainsKey(HashBundle(Name)))
@@ -95,7 +100,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             public EbxAsset modifiedAsset; //Only when parsing the fbmod
             public byte[] data; //Only when parsing the fbmod
 
-            public void WriteToCache(NativeWriter writer)
+            public void WriteToCache(FbmodParsing parser, NativeWriter writer)
             {
                 writer.WriteNullTerminatedString(Name);
                 writer.Write(ContainsModifiedData);
@@ -106,9 +111,9 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     writer.Write(FileGuid);
                     writer.Write(Hash);
                 }
-                writer.Write(AddedBundles);
+                parser.WriteAddedBundles(writer, AddedBundles);
             }
-            public ParsedModifiedEbx(NativeReader reader)
+            public ParsedModifiedEbx(FbmodParsing parser, NativeReader reader)
             {
                 Name = reader.ReadNullTerminatedString();
                 ContainsModifiedData = reader.ReadBoolean();
@@ -119,7 +124,8 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     FileGuid = reader.ReadGuid();
                     Hash = reader.ReadSha1();
                 }
-                AddedBundles = reader.ReadHashSetStrings();
+
+                AddedBundles = parser.ReadAddedBundles(reader);
             }
 
             public ParsedModifiedEbx(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
@@ -203,7 +209,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             public byte[] ResMeta; //Only when parsing the fbmod
             public byte[] data; //Only when parsing the fbmod
 
-            public void WriteToCache(NativeWriter writer)
+            public void WriteToCache(FbmodParsing parser, NativeWriter writer)
             {
                 writer.WriteNullTerminatedString(Name);
                 writer.Write(ContainsModifiedData);
@@ -214,10 +220,10 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     writer.Write(ResRid);
                     writer.Write(Hash);
                 }
-                writer.Write(AddedBundles);
+                parser.WriteAddedBundles(writer, AddedBundles);
             }
 
-            public ParsedModifiedRes(NativeReader reader)
+            public ParsedModifiedRes(FbmodParsing parser, NativeReader reader)
             {
                 Name = reader.ReadNullTerminatedString();
                 ContainsModifiedData = reader.ReadBoolean();
@@ -228,7 +234,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     ResRid = reader.ReadULong();
                     Hash = reader.ReadSha1();
                 }
-                AddedBundles = reader.ReadHashSetStrings();
+                AddedBundles = parser.ReadAddedBundles(reader);
             }
 
             public ParsedModifiedRes(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
@@ -301,19 +307,19 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             public int H32;
             public HashSet<string> AddedBundles = new HashSet<string>();
 
-            public void WriteToCache(NativeWriter writer)
+            public void WriteToCache(FbmodParsing parser, NativeWriter writer)
             {
                 writer.Write(ChunkGuid);
                 writer.Write(FirstMip);
                 writer.Write(H32);
-                writer.Write(AddedBundles);
+                parser.WriteAddedBundles(writer, AddedBundles);
             }
-            public ParsedModifiedChunk(NativeReader reader)
+            public ParsedModifiedChunk(FbmodParsing parser, NativeReader reader)
             {
                 ChunkGuid = reader.ReadGuid();
                 FirstMip = reader.ReadInt();
                 H32 = reader.ReadInt();
-                AddedBundles = reader.ReadHashSetStrings();
+                AddedBundles = parser.ReadAddedBundles(reader);
             }
 
             public ParsedModifiedChunk(FbmodParsing parser, BaseModResource resource, FrostyModReader fbmodReader, ResourceManager rm)
@@ -343,7 +349,7 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
             {
                 EbxAssetEntry refEntry = App.AssetManager.GetEbxEntry(parsedEbx.FileGuid);
-                int[] bunIds = parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
+                int[] bunIds = { };// parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (refEntry == null)
                     App.AssetManager.AddImaginaryEbx(parsedEbx.Name, parsedEbx.FileGuid, parsedEbx.ContainsModifiedData ? parsedEbx.Hash : Sha1.Zero, parsedEbx.ContainsModifiedData ? parsedEbx.Type : null, bunIds);
                 else
@@ -361,8 +367,9 @@ namespace AutoBundleManagerPlugin.Logic.Operations
 
             foreach (ParsedModifiedRes parsedRes in ParsedRes)
             {
+                parsedRes.AddedBundles.Clear();
                 ResAssetEntry resEntry = App.AssetManager.GetResEntry(parsedRes.Name);
-                int[] bunIds = (int[])parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
+                int[] bunIds = { };// = (int[])parsedRes.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (resEntry == null)
                 {
                     if (parsedRes.ContainsModifiedData)
@@ -386,13 +393,15 @@ namespace AutoBundleManagerPlugin.Logic.Operations
             }
             foreach (ParsedModifiedChunk parsedChk in ParsedChunks)
             {
+                parsedChk.AddedBundles.Clear();
                 ChunkAssetEntry chkEntry = App.AssetManager.GetChunkEntry(parsedChk.ChunkGuid);
                 // Fix this to be chk and don't forget FirstMip/H32
+                int[] bunIds = { };// = (int[])parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray();
                 if (chkEntry == null)
-                    App.AssetManager.AddImaginaryChunk(parsedChk.ChunkGuid, parsedChk.H32, parsedChk.FirstMip, parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray()); //App.AssetManager.AddImaginaryEbx(parsedChk.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
+                    App.AssetManager.AddImaginaryChunk(parsedChk.ChunkGuid, parsedChk.H32, parsedChk.FirstMip, bunIds); //App.AssetManager.AddImaginaryEbx(parsedChk.Name, parsedEbx.FileGuid, parsedEbx.Hash, parsedEbx.Type, parsedEbx.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)).ToArray());
                 else
                 {
-                    chkEntry.AddToBundles(parsedChk.AddedBundles.Select(bunName => App.AssetManager.GetBundleId(bunName)));
+                    chkEntry.AddToBundles(bunIds);
                     chkEntry.H32 = parsedChk.H32;
                     chkEntry.FirstMip = parsedChk.FirstMip;
                 }
@@ -410,31 +419,36 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     return false;
                 if (reader.ReadNullTerminatedString() != checksum)
                     return false;
+                int bundleOrderCount = reader.ReadInt();
                 int parsedBundlesCount = reader.ReadInt();
                 int parsedEbxCount = reader.ReadInt();
                 int parsedResCount = reader.ReadInt();
                 int parsedChkCount = reader.ReadInt();
+                for (int i = 0; i < bundleOrderCount; i++)
+                    BundleIndexOrder.Add(reader.ReadNullTerminatedString());
                 for (int i = 0; i < parsedBundlesCount; i++)
                     ParsedBundles.Add(new ParsedCustomBundle(this, reader));
                 for (int i = 0; i < parsedEbxCount; i++)
                 {
-                    ParsedModifiedEbx parsedEbx = new ParsedModifiedEbx(reader);
+                    ParsedModifiedEbx parsedEbx = new ParsedModifiedEbx(this, reader);
                     if (parsedEbx.Hash != null &&  parsedEbx.Hash != Sha1.Zero && !AbmDependenciesCache.HasSha1(parsedEbx.Hash))
                         return false;
                     ParsedEbx.Add(parsedEbx);
                 }
                 for (int i = 0; i < parsedResCount; i++)
                 {
-                    ParsedModifiedRes parsedRes = new ParsedModifiedRes(reader);
+                    ParsedModifiedRes parsedRes = new ParsedModifiedRes(this, reader);
                     if (parsedRes.Hash != null && parsedRes.Hash != Sha1.Zero && !AbmDependenciesCache.HasSha1(parsedRes.Hash))
                         return false;
                     ParsedRes.Add(parsedRes);
                 }
                 for (int i = 0; i < parsedChkCount; i++)
-                    ParsedChunks.Add(new ParsedModifiedChunk(reader));
+                    ParsedChunks.Add(new ParsedModifiedChunk(this, reader));
 
             }
+            task.Update($"ABM: Adding Imaginary {fbmodShortName}");
             AddImaginaryAssetsToAssetManager();
+            task.Update($"ABM: Compoleted {fbmodShortName}");
 
             return true;
         }
@@ -442,7 +456,11 @@ namespace AutoBundleManagerPlugin.Logic.Operations
         {
             foreach (int bunHash in resource.AddedBundles.Where(bunHash => !adaptiveBundleHashesToIds.ContainsKey(bunHash) && bunHash != 1548502573)) //1548502573 is chunk bundle
                 App.Logger.LogWarning($"{resource.Name}\t{bunHash}");
-            return new HashSet<string>(resource.AddedBundles.Where(bunHash => adaptiveBundleHashesToIds.ContainsKey(bunHash)).Select(bunHash => adaptiveBundleHashesToIds[bunHash]).ToList());
+            HashSet<string> bundles = new HashSet<string>(resource.AddedBundles.Where(bunHash => adaptiveBundleHashesToIds.ContainsKey(bunHash)).Select(bunHash => adaptiveBundleHashesToIds[bunHash]).ToList());
+            foreach(string addedBundle in bundles)
+                if (!BundleIndexOrder.Contains(addedBundle))
+                    BundleIndexOrder.Add(addedBundle);
+            return bundles;
         }
         public Dictionary<AssetEntry, Sha1> GetModifiedSha1s()
         {
@@ -466,6 +484,28 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     modifiedSha1s.Add(modifiedResEntry, parsedRes.Hash);
             }
             return modifiedSha1s;
+        }
+
+        public void WriteAddedBundles(NativeWriter writer, HashSet<string> AddedBundles)
+        {
+            writer.Write(AddedBundles.Count);
+            foreach (string addedBundle in AddedBundles)
+            {
+                writer.Write(BundleIndexOrder.IndexOf(addedBundle));
+            }
+        }
+        public HashSet<string> ReadAddedBundles(NativeReader reader)
+        {
+            HashSet<string> AddedBundles = new HashSet<string>();
+            int addedBundleCount = reader.ReadInt();
+            for (int i = 0; i < addedBundleCount; i++)
+            {
+                //reader.ReadInt();
+                //AddedBundles.Add("win32/A3/Levels/SP/M2PIL/DS02/StreamingZones");
+                AddedBundles.Add(BundleIndexOrder[reader.ReadInt()]);
+            }
+                //AddedBundles.Add(BundleIndexOrder[reader.ReadInt()]);
+            return AddedBundles;
         }
         public FbmodParsing(string fbmodFullPath, FrostyTaskWindow task)
         {
@@ -565,18 +605,21 @@ namespace AutoBundleManagerPlugin.Logic.Operations
                     writer.WriteNullTerminatedString("MopMagicFbmodCac"); //Magic
                     writer.Write(cacheVersion);
                     writer.WriteNullTerminatedString(checksum);
+                    writer.Write(BundleIndexOrder.Count);
                     writer.Write(ParsedBundles.Count);
                     writer.Write(ParsedEbx.Count);
                     writer.Write(ParsedRes.Count);
                     writer.Write(ParsedChunks.Count);
+                    foreach(string bundleName in BundleIndexOrder)
+                        writer.WriteNullTerminatedString(bundleName);
                     foreach (ParsedCustomBundle parsedBundle in ParsedBundles)
                         parsedBundle.WriteToCache(writer);
                     foreach (ParsedModifiedEbx parsedEbx in ParsedEbx)
-                        parsedEbx.WriteToCache(writer);
+                        parsedEbx.WriteToCache(this, writer);
                     foreach (ParsedModifiedRes parsedRes in ParsedRes)
-                        parsedRes.WriteToCache(writer);
+                        parsedRes.WriteToCache(this, writer);
                     foreach (ParsedModifiedChunk parsedChk in ParsedChunks)
-                        parsedChk.WriteToCache(writer);
+                        parsedChk.WriteToCache(this, writer);
                 }
             }
         }
